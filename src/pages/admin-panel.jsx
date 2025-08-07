@@ -1600,7 +1600,7 @@ export class AdminPanel {
         
         try {
             // Testar conexão com Supabase
-            const connectionTest = await this.dbService.testConnection();
+            await this.loadLeadsFromSupabase();
             
             if (connectionTest.success) {
                 console.log('✅ Conexão com Supabase OK');
