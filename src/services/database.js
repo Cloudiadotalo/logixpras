@@ -81,7 +81,7 @@ export class DatabaseService {
             const { data, error } = await this.supabase
                 .from('leads')
                 .select('*')
-                .order('created_at', { ascending: false });
+                .order('updated_at', { ascending: false });
 
             if (error) {
                 console.error('❌ Erro ao buscar leads:', error);
