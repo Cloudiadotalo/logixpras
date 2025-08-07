@@ -122,23 +122,25 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Preparar dados para inserção
-    const pedidoData = {
-      nome: webhookData.nome,
+    const leadData = {
+      nome_completo: webhookData.nome,
       cpf: webhookData.cpf.replace(/[^\d]/g, ''), // Limpar CPF
       email: webhookData.email || null,
       telefone: webhookData.telefone || null,
-      produto: webhookData.produto || 'Kit 12 caixas organizadoras + brinde',
-      valor: webhookData.valor || 67.90,
-      etapa_atual: 'Seu pedido foi criado',
-      etapa_data: new Date().toISOString()
+      produtos: webhookData.produto ? [webhookData.produto] : ['Kit 12 caixas organizadoras + brinde'],
+      valor_total: webhookData.valor || 67.90,
+      etapa_atual: 1,
+      origem: 'vega',
+      meio_pagamento: 'PIX',
+      status_pagamento: 'pendente'
     };
 
-    console.log('💾 Salvando no Supabase:', pedidoData);
+    console.log('💾 Salvando no Supabase:', leadData);
 
     // Inserir no Supabase
     const { data, error } = await supabase
-      .from('rastreamento_pedidos')
-      .insert([pedidoData])
+      .from('leads')
+      .insert([leadData])
       .select()
       .single();
 
@@ -150,16 +152,16 @@ Deno.serve(async (req: Request) => {
         console.log('🔄 CPF já existe, tentando atualizar...');
         
         const { data: updateData, error: updateError } = await supabase
-          .from('rastreamento_pedidos')
+          .from('leads')
           .update({
-            nome: pedidoData.nome,
-            email: pedidoData.email,
-            telefone: pedidoData.telefone,
-            produto: pedidoData.produto,
-            valor: pedidoData.valor,
-            etapa_data: pedidoData.etapa_data
+            nome_completo: leadData.nome_completo,
+            email: leadData.email,
+            telefone: leadData.telefone,
+            produtos: leadData.produtos,
+            valor_total: leadData.valor_total,
+            updated_at: 'now()'
           })
-          .eq('cpf', pedidoData.cpf)
+          .eq('cpf', leadData.cpf)
           .select()
           .single();
 
@@ -221,7 +223,7 @@ Deno.serve(async (req: Request) => {
         mensagem: "Lead salvo com sucesso",
         data: {
           id: data.id,
-          nome: data.nome,
+          nome_completo: data.nome_completo,
           cpf: data.cpf,
           etapa_atual: data.etapa_atual,
           created_at: data.created_at
