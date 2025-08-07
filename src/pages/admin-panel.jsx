@@ -2,7 +2,7 @@
  * Painel Administrativo - VERSÃO 17.0: COMANDO CENTRAL
  * O painel é o diretor que controla tudo via Supabase
  */
-import { supabase } from '../services/supabase-client.js';
+import { DatabaseService } from '../services/database.js';
 import { CPFValidator } from '../utils/cpf-validator.js';
 
 export class AdminPanel {
