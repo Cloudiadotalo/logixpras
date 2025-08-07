@@ -1103,6 +1103,111 @@ export class AdminPanel {
         this.bulkDataToImport = null;
     }
 
+    async confirmBulkImport() {
+        const parsedData = this.bulkParsedData;
+        if (!parsedData || parsedData.length === 0) {
+            alert('Nenhum dado para importar');
+            return;
+        }
+
+        console.log('🚀 Iniciando importação em massa de', parsedData.length, 'leads');
+        
+        const confirmButton = document.getElementById('confirmBulkImportButton');
+        if (confirmButton) {
+            confirmButton.disabled = true;
+            confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        for (const leadData of parsedData) {
+            try {
+                console.log('📝 Importando lead:', leadData.nome_completo);
+                
+                // Validar dados obrigatórios
+                if (!leadData.nome_completo || !leadData.cpf) {
+                    throw new Error('Nome completo e CPF são obrigatórios');
+                }
+                
+                // Limpar e validar CPF
+                const cleanCPF = leadData.cpf.replace(/[^\d]/g, '');
+                if (cleanCPF.length !== 11) {
+                    throw new Error('CPF deve ter 11 dígitos');
+                }
+                
+                // Preparar dados para inserção
+                const leadToInsert = {
+                    nome_completo: leadData.nome_completo.trim(),
+                    cpf: cleanCPF,
+                    email: leadData.email?.trim() || null,
+                    telefone: leadData.telefone?.trim() || null,
+                    endereco: leadData.endereco?.trim() || null,
+                    valor_total: parseFloat(leadData.valor_total) || 67.90,
+                    meio_pagamento: leadData.meio_pagamento || 'PIX',
+                    origem: 'painel_admin',
+                    produtos: leadData.produtos || [],
+                    order_bumps: leadData.order_bumps || [],
+                    etapa_atual: 1,
+                    status_pagamento: 'pendente'
+                };
+                
+                console.log('💾 Dados preparados para inserção:', leadToInsert);
+                
+                const result = await this.dbService.createLead(leadData);
+                if (result.success) {
+                    successCount++;
+                    console.log('✅ Lead importado com sucesso:', leadData.nome_completo);
+                } else {
+                    errorCount++;
+                    const errorMsg = `${leadData.nome_completo}: ${result.error}`;
+                    errors.push(errorMsg);
+                    console.error('❌ Erro ao importar lead:', errorMsg);
+                }
+            } catch (error) {
+                errorCount++;
+                const errorMsg = `${leadData.nome_completo}: ${error.message}`;
+                errors.push(errorMsg);
+                console.error('❌ Erro ao importar lead:', errorMsg);
+            }
+        }
+
+        console.log('📊 Resultado da importação:', {
+            total: parsedData.length,
+            sucessos: successCount,
+            erros: errorCount
+        });
+        
+        // Restaurar botão
+        if (confirmButton) {
+            confirmButton.disabled = false;
+            confirmButton.innerHTML = '<i class="fas fa-database"></i> Confirmar Importação para Supabase';
+        }
+
+        // Mostrar resultado detalhado
+        let message = `Importação concluída!\n\n✅ Sucessos: ${successCount}\n❌ Erros: ${errorCount}`;
+        
+        if (errors.length > 0 && errors.length <= 5) {
+            message += '\n\nErros encontrados:\n' + errors.join('\n');
+        } else if (errors.length > 5) {
+            message += '\n\nPrimeiros 5 erros:\n' + errors.slice(0, 5).join('\n') + `\n... e mais ${errors.length - 5} erros`;
+        }
+        
+        alert(message);
+
+        // Limpar dados e recarregar
+        this.bulkParsedData = null;
+        document.getElementById('bulkDataTextarea').value = '';
+        document.getElementById('bulkPreviewSection').style.display = 'none';
+        
+        // Recarregar lista de leads se houve sucessos
+        if (successCount > 0) {
+            console.log('🔄 Recarregando lista de leads...');
+            await this.loadLeadsFromSupabase();
+        }
+    }
+
     async confirmBulkImport(validLines) {
         if (!validLines || validLines.length === 0) {
             this.showNotification('Nenhum dado para importar', 'error');

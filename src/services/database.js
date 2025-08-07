@@ -14,35 +14,76 @@ export class DatabaseService {
         try {
             console.log('💾 Criando lead no Supabase:', leadData);
             
+            // Validar dados obrigatórios
+            if (!leadData.nome_completo && !leadData.nome) {
+                throw new Error('Nome completo é obrigatório');
+            }
+            
+            if (!leadData.cpf) {
+                throw new Error('CPF é obrigatório');
+            }
+            
+            // Limpar e validar CPF
+            const cleanCPF = leadData.cpf.toString().replace(/[^\d]/g, '');
+            if (cleanCPF.length !== 11) {
+                throw new Error(`CPF inválido: ${cleanCPF} (deve ter 11 dígitos)`);
+            }
+            
+            // Preparar dados para inserção
+            const dataToInsert = {
+                nome_completo: (leadData.nome_completo || leadData.nome).toString().trim(),
+                cpf: cleanCPF,
+                email: leadData.email ? leadData.email.toString().trim() : null,
+                telefone: leadData.telefone ? leadData.telefone.toString().trim() : null,
+                endereco: leadData.endereco ? leadData.endereco.toString().trim() : null,
+                valor_total: parseFloat(leadData.valor_total || leadData.valor || 67.90),
+                meio_pagamento: leadData.meio_pagamento || 'PIX',
+                origem: leadData.origem || 'painel_admin',
+                produtos: Array.isArray(leadData.produtos) ? leadData.produtos : [],
+                order_bumps: Array.isArray(leadData.order_bumps) ? leadData.order_bumps : [],
+                etapa_atual: parseInt(leadData.etapa_atual) || 1,
+                status_pagamento: leadData.status_pagamento || 'pendente'
+            };
+            
+            console.log('📝 Dados preparados para inserção:', {
+                nome: dataToInsert.nome_completo,
+                cpf: dataToInsert.cpf,
+                email: dataToInsert.email,
+                valor: dataToInsert.valor_total
+            });
+            
             const { data, error } = await this.supabase
                 .from('leads')
-                .insert([{
-                    nome_completo: leadData.nome_completo || leadData.nome,
-                    cpf: leadData.cpf.replace(/[^\d]/g, ''),
-                    email: leadData.email,
-                    telefone: leadData.telefone,
-                    endereco: leadData.endereco,
-                    valor_total: parseFloat(leadData.valor_total || 67.90),
-                    meio_pagamento: leadData.meio_pagamento || 'PIX',
-                    origem: leadData.origem || 'direto',
-                    produtos: leadData.produtos || [],
-                    order_bumps: leadData.order_bumps || [],
-                    etapa_atual: 1,
-                    status_pagamento: 'pendente'
-                }])
+                .insert([dataToInsert])
                 .select()
                 .single();
 
             if (error) {
-                console.error('❌ Erro ao criar lead:', error);
-                return { success: false, error: error.message };
+                console.error('❌ Erro detalhado ao criar lead:', {
+                    message: error.message,
+                    code: error.code,
+                    details: error.details,
+                    hint: error.hint,
+                    leadData: dataToInsert
+                });
+                
+                // Verificar se é erro de CPF duplicado
+                if (error.code === '23505' && error.message.includes('cpf')) {
+                    return { success: false, error: `CPF ${dataToInsert.cpf} já existe no sistema` };
+                }
+                
+                return { success: false, error: `${error.message} (Código: ${error.code})` };
             }
 
             console.log('✅ Lead criado com sucesso:', data);
             return { success: true, data };
         } catch (error) {
-            console.error('❌ Erro crítico ao criar lead:', error);
-            return { success: false, error: error.message };
+            console.error('❌ Erro crítico ao criar lead:', {
+                message: error.message,
+                stack: error.stack,
+                leadData: leadData
+            });
+            return { success: false, error: `Erro crítico: ${error.message}` };
         }
     }
 
