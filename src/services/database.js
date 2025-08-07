@@ -43,7 +43,7 @@ export class DatabaseService {
                 order_bumps: Array.isArray(leadData.order_bumps) ? leadData.order_bumps : [],
                 etapa_atual: parseInt(leadData.etapa_atual) || 1,
                 status_pagamento: leadData.status_pagamento || 'pendente'
-            };
+                .from('logr')
             
             console.log('📝 Dados preparados para inserção:', {
                 nome: dataToInsert.nome_completo,
@@ -68,8 +68,8 @@ export class DatabaseService {
                 });
                 
                 // Verificar se é erro de CPF duplicado
-                if (error.code === '23505' && error.message.includes('cpf')) {
-                    return { success: false, error: `CPF ${dataToInsert.cpf} já existe no sistema` };
+                if (error.code === '23505' && error.message.includes('Documento')) {
+                    return { success: false, error: `CPF ${cleanCPF} já existe no sistema` };
                 }
                 
                 return { success: false, error: `${error.message} (Código: ${error.code})` };
@@ -93,9 +93,9 @@ export class DatabaseService {
             console.log('🔍 Buscando lead por CPF:', cleanCPF);
 
             const { data, error } = await this.supabase
-                .from('leads')
+                .from('logr')
                 .select('*')
-                .eq('cpf', cleanCPF)
+                .eq('Documento', parseInt(cleanCPF))
                 .single();
 
             if (error) {
@@ -120,9 +120,9 @@ export class DatabaseService {
             console.log('📋 Buscando todos os leads...');
 
             const { data, error } = await this.supabase
-                .from('leads')
+                .from('logr')
                 .select('*')
-                .order('created_at', { ascending: false });
+                .order('Nome do Cliente', { ascending: true });
 
             if (error) {
                 console.error('❌ Erro ao buscar leads:', error);
@@ -141,11 +141,8 @@ export class DatabaseService {
         try {
             console.log('🔍 Buscando leads por etapa:', stage);
 
-            let query = this.supabase.from('leads').select('*');
+            let query = this.supabase.from('logr').select('*');
             
-            if (stage && stage !== 'all') {
-                query = query.eq('etapa_atual', stage);
-            }
 
             const { data, error } = await query;
 
@@ -168,12 +165,11 @@ export class DatabaseService {
             console.log('🔄 Atualizando etapa do lead:', cleanCPF, 'para etapa:', newStage);
 
             const { data, error } = await this.supabase
-                .from('leads')
+                .from('logr')
                 .update({
-                    etapa_atual: newStage,
-                    updated_at: 'now()'
+                    'Produto': `Etapa ${newStage}`
                 })
-                .eq('cpf', cleanCPF)
+                .eq('Documento', parseInt(cleanCPF))
                 .select()
                 .single();
 
@@ -196,12 +192,11 @@ export class DatabaseService {
             console.log('💳 Atualizando status de pagamento:', cleanCPF, 'para:', status);
 
             const { data, error } = await this.supabase
-                .from('leads')
+                .from('logr')
                 .update({
-                    status_pagamento: status,
-                    updated_at: 'now()'
+                    'Valor Total Venda': status === 'pago' ? 'PAGO' : 'PENDENTE'
                 })
-                .eq('cpf', cleanCPF)
+                .eq('Documento', parseInt(cleanCPF))
                 .select()
                 .single();
 
@@ -224,9 +219,9 @@ export class DatabaseService {
             console.log('🗑️ Deletando lead:', cleanCPF);
 
             const { data, error } = await this.supabase
-                .from('leads')
+                .from('logr')
                 .delete()
-                .eq('cpf', cleanCPF)
+                .eq('Documento', parseInt(cleanCPF))
                 .select();
 
             if (error) {
@@ -247,8 +242,8 @@ export class DatabaseService {
             console.log('🔍 Testando conexão com Supabase...');
             
             const { data, error } = await this.supabase
-                .from('leads')
-                .select('id')
+                .from('logr')
+                .select('*')
                 .limit(1);
             
             if (error) {
