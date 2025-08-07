@@ -94,9 +94,9 @@ export class DatabaseService {
             console.log('🔍 Buscando lead por CPF:', cleanCPF);
 
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .select('*')
-                .eq('Documento', parseInt(cleanCPF))
+                .eq('cpf', cleanCPF)
                 .single();
 
             if (error) {
@@ -121,9 +121,9 @@ export class DatabaseService {
             console.log('📋 Buscando todos os leads...');
 
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .select('*')
-                .order('Nome do Cliente', { ascending: true });
+                .order('created_at', { ascending: false });
 
             if (error) {
                 console.error('❌ Erro ao buscar leads:', error);
@@ -142,8 +142,11 @@ export class DatabaseService {
         try {
             console.log('🔍 Buscando leads por etapa:', stage);
 
-            let query = this.supabase.from('logr').select('*');
+            let query = this.supabase.from('leads').select('*');
             
+            if (stage !== 'all') {
+                query = query.eq('etapa_atual', parseInt(stage));
+            }
 
             const { data, error } = await query;
 
@@ -166,11 +169,12 @@ export class DatabaseService {
             console.log('🔄 Atualizando etapa do lead:', cleanCPF, 'para etapa:', newStage);
 
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .update({
-                    'Produto': `Etapa ${newStage}`
+                    etapa_atual: parseInt(newStage),
+                    updated_at: new Date().toISOString()
                 })
-                .eq('Documento', parseInt(cleanCPF))
+                .eq('cpf', cleanCPF)
                 .select()
                 .single();
 
@@ -193,11 +197,12 @@ export class DatabaseService {
             console.log('💳 Atualizando status de pagamento:', cleanCPF, 'para:', status);
 
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .update({
-                    'Valor Total Venda': status === 'pago' ? 'PAGO' : 'PENDENTE'
+                    status_pagamento: status,
+                    updated_at: new Date().toISOString()
                 })
-                .eq('Documento', parseInt(cleanCPF))
+                .eq('cpf', cleanCPF)
                 .select()
                 .single();
 
@@ -220,9 +225,9 @@ export class DatabaseService {
             console.log('🗑️ Deletando lead:', cleanCPF);
 
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .delete()
-                .eq('Documento', parseInt(cleanCPF))
+                .eq('cpf', cleanCPF)
                 .select();
 
             if (error) {
@@ -243,7 +248,7 @@ export class DatabaseService {
             console.log('🔍 Testando conexão com Supabase...');
             
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .select('*')
                 .limit(1);
             
