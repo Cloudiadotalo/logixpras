@@ -1493,7 +1493,6 @@ export class AdminPanel {
         console.log('🔄 Iniciando recarregamento da transportadora...');
         
         const button = document.getElementById('reloadTransportadoraButton');
-        if (button) {
             button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recarregando...';
             button.disabled = true;
         }
