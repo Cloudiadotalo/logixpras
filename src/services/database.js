@@ -44,6 +44,7 @@ export class DatabaseService {
                 etapa_atual: parseInt(leadData.etapa_atual) || 1,
                 status_pagamento: leadData.status_pagamento || 'pendente'
                 .from('logr')
+            }
             
             console.log('📝 Dados preparados para inserção:', {
                 nome: dataToInsert.nome_completo,
