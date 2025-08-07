@@ -702,7 +702,7 @@ export class AdminPanel {
             if (!lead) {
                 this.showNotification('Lead não encontrado', 'error');
                 return;
-        } catch (error) {
+                    } catch (error) {
             const newStage = Math.max(1, Math.min(26, currentStage + direction));
             
             console.log(`📊 Atualizando etapa no Supabase: ${currentStage} → ${newStage}`);
@@ -726,6 +726,7 @@ export class AdminPanel {
             console.error('❌ Erro ao atualizar etapa:', error);
             this.showNotification('Erro ao atualizar etapa: ' + error.message, 'error');
         }
+            }
     }
 
     async deleteLead(leadId) {
