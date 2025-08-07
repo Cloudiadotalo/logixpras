@@ -702,7 +702,6 @@ export class AdminPanel {
             if (!lead) {
                 this.showNotification('Lead não encontrado', 'error');
                 return;
-                    } catch (error) {
             const newStage = Math.max(1, Math.min(26, currentStage + direction));
             
             console.log(`📊 Atualizando etapa no Supabase: ${currentStage} → ${newStage}`);
