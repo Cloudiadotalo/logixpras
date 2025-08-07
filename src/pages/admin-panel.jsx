@@ -1595,35 +1595,41 @@ export class AdminPanel {
     }
 
     async reloadTransportadoraSystem() {
-        console.log('🔄 Iniciando recarregamento da transportadora...');
+        console.log('🔄 Recarregando sistema da transportadora...');
+        this.showNotification('Recarregando sistema da transportadora...', 'info');
         
-        const button = document.getElementById('reloadTransportadoraButton');
-        if (button) {
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recarregando...';
-            button.disabled = true;
-            // Forçar reconexão com Supabase
-            const reconnected = await this.dbService.forceReconnect();
-            
-            if (reconnected) {
-                // Sincronizar dados
-                await this.syncWithSupabase();
+        try {
+            const button = document.getElementById('reloadTransportadoraButton');
+            if (button) {
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recarregando...';
+                button.disabled = true;
+                // Forçar reconexão com Supabase
+                const reconnected = await this.dbService.forceReconnect();
                 
-                // Notificar sucesso
-                this.showNotification('Sistema da transportadora recarregado com sucesso!', 'success');
+                if (reconnected) {
+                    // Sincronizar dados
+                    await this.syncWithSupabase();
+                    
+                    // Notificar sucesso
+                    this.showNotification('Sistema da transportadora recarregado com sucesso!', 'success');
+                    
+                    console.log('✅ Transportadora recarregada com sucesso');
+                } else {
+                    throw new Error('Falha na reconexão com Supabase');
+                }
                 
-                console.log('✅ Transportadora recarregada com sucesso');
-            } else {
-                throw new Error('Falha na reconexão com Supabase');
+            } catch (error) {
+                console.error('❌ Erro ao recarregar transportadora:', error);
+                this.showNotification('Erro ao recarregar sistema da transportadora', 'error');
+            } finally {
+                if (button) {
+                    button.innerHTML = '<i class="fas fa-redo"></i> Reinicializar Sistema';
+                    button.disabled = false;
+                }
             }
-            
         } catch (error) {
             console.error('❌ Erro ao recarregar transportadora:', error);
             this.showNotification('Erro ao recarregar sistema da transportadora', 'error');
-        } finally {
-            if (button) {
-                button.innerHTML = '<i class="fas fa-redo"></i> Reinicializar Sistema';
-                button.disabled = false;
-            }
         }
     }
 
