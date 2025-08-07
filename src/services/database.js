@@ -110,8 +110,31 @@ export class DatabaseService {
                 return { success: false, error: error.message };
             }
 
-            console.log('✅ Lead encontrado:', data);
-            return { success: true, data };
+            // Mapear dados da tabela logr para formato esperado
+            const mappedData = {
+                id: data.Documento,
+                nome_completo: data['Nome do Cliente'],
+                cpf: data.Documento ? data.Documento.toString() : '',
+                email: data['Email do Cliente'],
+                telefone: data['Telefone do Cliente'] ? data['Telefone do Cliente'].toString() : '',
+                produto: data.Produto,
+                valor_total: data['Valor Total Venda'],
+                endereco: data['Endereço'],
+                numero: data['Número'],
+                complemento: data.Complemento,
+                bairro: data.Bairro,
+                cep: data.Cep ? data.Cep.toString() : '',
+                cidade: data.Cidade,
+                estado: data.Estado,
+                pais: data['País'],
+                etapa_atual: 11,
+                status_pagamento: 'pendente',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            console.log('✅ Lead encontrado e mapeado:', mappedData);
+            return { success: true, data: mappedData };
         } catch (error) {
             console.error('❌ Erro crítico ao buscar lead:', error);
             return { success: false, error: error.message };
@@ -132,8 +155,32 @@ export class DatabaseService {
                 return { success: false, error: error.message };
             }
 
-            console.log('✅ Leads encontrados:', data.length);
-            return { success: true, data };
+            // Mapear dados da tabela logr para formato esperado pelo painel
+            const mappedData = data.map(lead => ({
+                id: lead.Documento, // Usar CPF como ID único
+                nome_completo: lead['Nome do Cliente'],
+                cpf: lead.Documento ? lead.Documento.toString() : '',
+                email: lead['Email do Cliente'],
+                telefone: lead['Telefone do Cliente'] ? lead['Telefone do Cliente'].toString() : '',
+                produto: lead.Produto,
+                valor_total: lead['Valor Total Venda'],
+                endereco: lead['Endereço'],
+                numero: lead['Número'],
+                complemento: lead.Complemento,
+                bairro: lead.Bairro,
+                cep: lead.Cep ? lead.Cep.toString() : '',
+                cidade: lead.Cidade,
+                estado: lead.Estado,
+                pais: lead['País'],
+                etapa_atual: 11, // Etapa padrão para leads existentes
+                status_pagamento: 'pendente', // Status padrão
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }));
+
+            console.log('✅ Leads encontrados e mapeados:', mappedData.length);
+            console.log('📊 Primeiro lead mapeado:', mappedData[0]);
+            return { success: true, data: mappedData };
         } catch (error) {
             console.error('❌ Erro crítico ao buscar leads:', error);
             return { success: false, error: error.message };
