@@ -95,6 +95,31 @@ export class DatabaseService {
         }
     }
 
+    async getLeadsByStage(stage) {
+        try {
+            console.log('🔍 Buscando leads por etapa:', stage);
+
+            let query = this.supabase.from('leads').select('*');
+            
+            if (stage && stage !== 'all') {
+                query = query.eq('etapa_atual', stage);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('❌ Erro ao buscar leads por etapa:', error);
+                return { success: false, error: error.message };
+            }
+
+            console.log('✅ Leads encontrados por etapa:', data.length);
+            return { success: true, data };
+        } catch (error) {
+            console.error('❌ Erro crítico ao buscar leads por etapa:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     async updateLeadStage(cpf, newStage) {
         try {
             const cleanCPF = cpf.replace(/[^\d]/g, '');
