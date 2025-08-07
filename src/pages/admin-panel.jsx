@@ -1601,9 +1601,6 @@ export class AdminPanel {
         if (button) {
             button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recarregando...';
             button.disabled = true;
-        }
-        
-        try {
             // Forçar reconexão com Supabase
             const reconnected = await this.dbService.forceReconnect();
             
