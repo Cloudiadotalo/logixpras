@@ -83,16 +83,16 @@ export class DatabaseService {
     }
 
     getSupabaseUrl() {
-        // Conexão direta com Supabase - sem dependências externas
-        const supabaseUrl = 'https://coegmiyojkubtksfhwky.supabase.co';
-        console.log('🔗 URL Supabase configurada diretamente:', supabaseUrl);
+        // Conexão direta com Supabase - Agrupador de transações
+        const supabaseUrl = 'https://zxizvckmvgrvhduhprfd.supabase.co';
+        console.log('🔗 URL Supabase configurada (Agrupador de transações):', supabaseUrl);
         return supabaseUrl;
     }
 
     getSupabaseKey() {
-        // Chave pública Supabase configurada diretamente - sem dependências externas
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvZWdtaXlvamt1YnRrc2Zod2t5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNjEyNjIsImV4cCI6MjA2OTgzNzI2Mn0.cLn3hKWDuf8Vjb8GtLAl0W30nTIc7GhvRJbSnVsegFY';
-        console.log('🔑 Chave Supabase configurada diretamente');
+        // Chave pública Supabase - Agrupador de transações
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4aXp2Y2ttdmdydmhkdWhwcmZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NDE3NDMsImV4cCI6MjA3MDExNzc0M30.rYD2KCL49QZLRyMa9a72EBNHvl94dSrp-W5IKyiTlNM';
+        console.log('🔑 Chave Supabase configurada (Agrupador de transações)');
         return supabaseKey;
     }
 
