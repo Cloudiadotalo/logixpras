@@ -46,8 +46,7 @@ export class DatabaseService {
                 'Cidade': leadData['Cidade'] || leadData.cidade || null,
                 'Estado': leadData['Estado'] || leadData.estado || null,
                 'País': leadData['País'] || leadData.pais || 'BR'
-                .from('logr')
-            }
+            };
             
             console.log('📝 Dados preparados para inserção:', {
                 nome: dataToInsert['Nome do Cliente'],
