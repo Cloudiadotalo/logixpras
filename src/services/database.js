@@ -15,16 +15,16 @@ export class DatabaseService {
             console.log('💾 Criando lead no Supabase:', leadData);
             
             // Validar dados obrigatórios
-            if (!leadData['Nome do Cliente'] && !leadData.nome_completo && !leadData.nome) {
+            if (!leadData.nome_completo && !leadData.nome) {
                 throw new Error('Nome completo é obrigatório');
             }
             
-            if (!leadData['Documento'] && !leadData.cpf) {
+            if (!leadData.cpf) {
                 throw new Error('CPF é obrigatório');
             }
             
             // Limpar e validar CPF
-            const cpfField = leadData['Documento'] || leadData.cpf;
+            const cpfField = leadData.cpf;
             const cleanCPF = cpfField.toString().replace(/[^\d]/g, '');
             if (cleanCPF.length !== 11) {
                 throw new Error(`CPF inválido: ${cleanCPF} (deve ter 11 dígitos)`);
@@ -32,31 +32,33 @@ export class DatabaseService {
             
             // Preparar dados para inserção
             const dataToInsert = {
-                'Nome do Cliente': (leadData['Nome do Cliente'] || leadData.nome_completo || leadData.nome).toString().trim(),
-                'Documento': parseInt(cleanCPF),
-                'Email do Cliente': leadData['Email do Cliente'] || leadData.email || null,
-                'Telefone do Cliente': leadData['Telefone do Cliente'] || leadData.telefone ? parseInt((leadData['Telefone do Cliente'] || leadData.telefone).toString().replace(/[^\d]/g, '')) : null,
-                'Produto': leadData['Produto'] || leadData.produto || 'Kit 12 caixas organizadoras + brinde',
-                'Valor Total Venda': leadData['Valor Total Venda'] || leadData.valor_total || leadData.valor || '67.90',
-                'Endereço': leadData['Endereço'] || leadData.endereco || null,
-                'Número': leadData['Número'] || leadData.numero || null,
-                'Complemento': leadData['Complemento'] || leadData.complemento || null,
-                'Bairro': leadData['Bairro'] || leadData.bairro || null,
-                'Cep': leadData['Cep'] || leadData.cep ? parseInt((leadData['Cep'] || leadData.cep).toString().replace(/[^\d]/g, '')) : null,
-                'Cidade': leadData['Cidade'] || leadData.cidade || null,
-                'Estado': leadData['Estado'] || leadData.estado || null,
-                'País': leadData['País'] || leadData.pais || 'BR'
+                nome_completo: (leadData.nome_completo || leadData.nome).toString().trim(),
+                cpf: cleanCPF,
+                email: leadData.email || null,
+                telefone: leadData.telefone ? leadData.telefone.toString().replace(/[^\d]/g, '') : null,
+                produto: leadData.produto || [{ nome: 'Kit 12 caixas organizadoras + brinde', preco: 67.90 }],
+                valor_total: parseFloat(leadData.valor_total || leadData.valor || 67.90),
+                endereco: leadData.endereco || null,
+                numero: leadData.numero || null,
+                complemento: leadData.complemento || null,
+                bairro: leadData.bairro || null,
+                cep: leadData.cep ? leadData.cep.toString().replace(/[^\d]/g, '') : null,
+                cidade: leadData.cidade || null,
+                estado: leadData.estado || null,
+                pais: leadData.pais || 'BR',
+                etapa_atual: leadData.etapa_atual || 11,
+                status_pagamento: leadData.status_pagamento || 'pendente'
             };
             
             console.log('📝 Dados preparados para inserção:', {
-                nome: dataToInsert['Nome do Cliente'],
-                documento: dataToInsert['Documento'],
-                email: dataToInsert['Email do Cliente'],
-                valor: dataToInsert['Valor Total Venda']
+                nome: dataToInsert.nome_completo,
+                cpf: dataToInsert.cpf,
+                email: dataToInsert.email,
+                valor: dataToInsert.valor_total
             });
             
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .insert([dataToInsert])
                 .select()
                 .single();
@@ -96,9 +98,9 @@ export class DatabaseService {
             console.log('🔍 Buscando lead por CPF:', cleanCPF);
 
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .select('*')
-                .eq('Documento', parseInt(cleanCPF))
+                .eq('cpf', cleanCPF)
                 .single();
 
             if (error) {
@@ -110,31 +112,8 @@ export class DatabaseService {
                 return { success: false, error: error.message };
             }
 
-            // Mapear dados da tabela logr para formato esperado
-            const mappedData = {
-                id: data.Documento,
-                nome_completo: data['Nome do Cliente'],
-                cpf: data.Documento ? data.Documento.toString() : '',
-                email: data['Email do Cliente'],
-                telefone: data['Telefone do Cliente'] ? data['Telefone do Cliente'].toString() : '',
-                produto: data.Produto,
-                valor_total: parseFloat(data['Valor Total Venda']) || 0,
-                endereco: data['Endereço'],
-                numero: data['Número'],
-                complemento: data.Complemento,
-                bairro: data.Bairro,
-                cep: data.Cep ? data.Cep.toString() : '',
-                cidade: data.Cidade,
-                estado: data.Estado,
-                pais: data['País'],
-                etapa_atual: 11,
-                status_pagamento: 'pendente',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-
-            console.log('✅ Lead encontrado e mapeado:', mappedData);
-            return { success: true, data: mappedData };
+            console.log('✅ Lead encontrado:', data);
+            return { success: true, data };
         } catch (error) {
             console.error('❌ Erro crítico ao buscar lead:', error);
             return { success: false, error: error.message };
@@ -146,41 +125,17 @@ export class DatabaseService {
             console.log('📋 Buscando todos os leads...');
 
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .select('*')
-                .order('Nome do Cliente', { ascending: true });
+                .order('nome_completo', { ascending: true });
 
             if (error) {
                 console.error('❌ Erro ao buscar leads:', error);
                 return { success: false, error: error.message };
             }
 
-            // Mapear dados da tabela logr para formato esperado pelo painel
-            const mappedData = data.map(lead => ({
-                id: lead.Documento, // Usar CPF como ID único
-                nome_completo: lead['Nome do Cliente'],
-                cpf: lead.Documento ? lead.Documento.toString() : '',
-                email: lead['Email do Cliente'],
-                telefone: lead['Telefone do Cliente'] ? lead['Telefone do Cliente'].toString() : '',
-                produto: lead.Produto,
-                valor_total: parseFloat(lead['Valor Total Venda']) || 0,
-                endereco: lead['Endereço'],
-                numero: lead['Número'],
-                complemento: lead.Complemento,
-                bairro: lead.Bairro,
-                cep: lead.Cep ? lead.Cep.toString() : '',
-                cidade: lead.Cidade,
-                estado: lead.Estado,
-                pais: lead['País'],
-                etapa_atual: 11, // Etapa padrão para leads existentes
-                status_pagamento: 'pendente', // Status padrão
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }));
-
-            console.log('✅ Leads encontrados e mapeados:', mappedData.length);
-            console.log('📊 Primeiro lead mapeado:', mappedData[0]);
-            return { success: true, data: mappedData };
+            console.log('✅ Leads encontrados:', data.length);
+            return { success: true, data };
         } catch (error) {
             console.error('❌ Erro crítico ao buscar leads:', error);
             return { success: false, error: error.message };
@@ -191,10 +146,12 @@ export class DatabaseService {
         try {
             console.log('🔍 Buscando leads por etapa:', stage);
 
-            let query = this.supabase.from('logr').select('*');
+            let query = this.supabase.from('leads').select('*');
             
-            // Como a tabela logr não tem campo de etapa, retornar todos
-            console.log('⚠️ Tabela logr não possui campo de etapa, retornando todos os leads');
+            // Filtrar por etapa
+            if (stage) {
+                query = query.eq('etapa_atual', stage);
+            }
 
             const { data, error } = await query;
 
@@ -215,10 +172,20 @@ export class DatabaseService {
         try {
             const cleanCPF = cpf.replace(/[^\d]/g, '');
             console.log('🔄 Tentando atualizar etapa do lead:', cleanCPF, 'para etapa:', newStage);
-            console.log('⚠️ Tabela logr não possui campo etapa_atual - operação será ignorada');
 
-            // Simular sucesso já que a tabela logr não tem campo de etapa
-            return { success: true, data: { cpf: cleanCPF, etapa_atual: newStage } };
+            const { data, error } = await this.supabase
+                .from('leads')
+                .update({ etapa_atual: newStage, updated_at: new Date().toISOString() })
+                .eq('cpf', cleanCPF)
+                .select();
+
+            if (error) {
+                console.error('❌ Erro ao atualizar etapa:', error);
+                return { success: false, error: error.message };
+            }
+
+            console.log('✅ Etapa atualizada com sucesso:', data);
+            return { success: true, data };
         } catch (error) {
             console.error('❌ Erro crítico ao atualizar etapa:', error);
             return { success: false, error: error.message };
@@ -229,10 +196,20 @@ export class DatabaseService {
         try {
             const cleanCPF = cpf.replace(/[^\d]/g, '');
             console.log('💳 Tentando atualizar status de pagamento:', cleanCPF, 'para:', status);
-            console.log('⚠️ Tabela logr não possui campo status_pagamento - operação será ignorada');
 
-            // Simular sucesso já que a tabela logr não tem campo de status
-            return { success: true, data: { cpf: cleanCPF, status_pagamento: status } };
+            const { data, error } = await this.supabase
+                .from('leads')
+                .update({ status_pagamento: status, updated_at: new Date().toISOString() })
+                .eq('cpf', cleanCPF)
+                .select();
+
+            if (error) {
+                console.error('❌ Erro ao atualizar status:', error);
+                return { success: false, error: error.message };
+            }
+
+            console.log('✅ Status atualizado com sucesso:', data);
+            return { success: true, data };
         } catch (error) {
             console.error('❌ Erro crítico ao atualizar status:', error);
             return { success: false, error: error.message };
@@ -245,9 +222,9 @@ export class DatabaseService {
             console.log('🗑️ Deletando lead:', cleanCPF);
 
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .delete()
-                .eq('Documento', parseInt(cleanCPF))
+                .eq('cpf', cleanCPF)
                 .select();
 
             if (error) {
@@ -268,7 +245,7 @@ export class DatabaseService {
             console.log('🔍 Testando conexão com Supabase...');
             
             const { data, error } = await this.supabase
-                .from('logr')
+                .from('leads')
                 .select('*')
                 .limit(1);
             
