@@ -520,10 +520,20 @@ export class AdminPanel {
         console.log(`📈 Avançando ${this.filteredLeads.length} leads...`);
         
         try {
-            for (const lead of this.filteredLeads) {
-                const nextStage = Math.min(lead.etapa_atual + 1, 29);
-                await this.dbService.updateLead(lead.id, { etapa_atual: nextStage });
-                console.log(`✅ Lead ${lead.nome_completo} avançado para etapa ${nextStage}`);
+            for (const lead of this.leads) {
+                try {
+                    const result = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
+                    
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        console.error(`❌ Erro ao avançar lead: ${lead.nome_completo}`, result.error);
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.error(`❌ Erro ao avançar lead: ${lead.nome_completo}`, error);
+                }
             }
             
             alert(`✅ ${this.filteredLeads.length} leads avançados com sucesso!`);
