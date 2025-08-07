@@ -80,7 +80,8 @@ export class DatabaseService {
 
             const { data, error } = await this.supabase
                 .from('leads')
-                .select('*');
+                .select('*')
+                .order('created_at', { ascending: false });
 
             if (error) {
                 console.error('❌ Erro ao buscar leads:', error);
@@ -129,7 +130,7 @@ export class DatabaseService {
                 .from('leads')
                 .update({
                     etapa_atual: newStage,
-                    updated_at: new Date().toISOString()
+                    updated_at: 'now()'
                 })
                 .eq('cpf', cleanCPF)
                 .select()
@@ -157,7 +158,7 @@ export class DatabaseService {
                 .from('leads')
                 .update({
                     status_pagamento: status,
-                    updated_at: new Date().toISOString()
+                    updated_at: 'now()'
                 })
                 .eq('cpf', cleanCPF)
                 .select()
