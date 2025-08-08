@@ -758,7 +758,13 @@ export class AdminPanel {
             if (result.success) {
                 console.log('✅ Lead excluído do Supabase via painel');
                 await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
-                this.showNotification('Lead excluído com sucesso do Supabase!', 'success');
+            // Encontrar o lead pelo ID para obter o CPF
+            const lead = this.allLeads.find(l => l.id === leadId);
+            if (!lead || !lead.cpf) {
+                throw new Error('Lead não encontrado ou CPF ausente');
+            }
+            
+            const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
             } else {
                 console.error('❌ Erro ao excluir lead:', result.error);
                 this.showNotification('Erro ao excluir lead: ' + result.error, 'error');
