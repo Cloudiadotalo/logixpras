@@ -1396,8 +1396,6 @@ export class AdminPanel {
                 const result = await this.dbService.deleteLead(leadId);
                 if (result.success) {
                     deletedCount++;
-                } else {
-                    console.warn(`⚠️ Erro ao deletar lead ${leadId}:`, result.error);
                 }
             }
             
