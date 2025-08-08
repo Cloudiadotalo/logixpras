@@ -1346,23 +1346,44 @@ export class AdminPanel {
     }
 
     async massSetStage(leadIds) {
-        const stageInput = prompt(`Digite a etapa desejada (1-26) para ${leadIds.length} lead(s):`);
-        if (!stageInput) return;
-
-        const newStage = parseInt(stageInput);
-        if (isNaN(newStage) || newStage < 1 || newStage > 26) {
-            this.showNotification('Etapa inválida. Digite um número entre 1 e 26.', 'error');
-            return;
-        }
-
-        if (!confirm(`Tem certeza que deseja definir a etapa ${newStage} para ${leadIds.length} lead(s) no Supabase?`)) return;
-
         try {
-            console.log(`📊 Definindo etapa ${newStage} em massa no Supabase...`);
+            const selectedLeads = this.getSelectedLeads();
             
-            const result = await this.dbService.bulkUpdateLeads(leadIds, {
-                etapa_atual: newStage
+            // Validar se há leads selecionados
+            if (!selectedLeads || selectedLeads.length === 0) {
+                throw new Error('Nenhum lead selecionado');
+            }
+            
+            const targetStage = parseInt(prompt('Digite a etapa desejada (1-25):'));
+            
+            if (!targetStage || targetStage < 1 || targetStage > 25) {
+                throw new Error('Etapa inválida');
+            }
+            
+            // Validar CPFs dos leads selecionados
+            const validLeads = selectedLeads.filter(lead => {
+                if (!lead || !lead.cpf) {
+                    console.warn('⚠️ Lead sem CPF encontrado:', lead);
+                    return false;
+                }
+                return true;
             });
+            
+            if (validLeads.length === 0) {
+                throw new Error('Nenhum lead válido selecionado (todos sem CPF)');
+            }
+            
+            if (validLeads.length !== selectedLeads.length) {
+                console.warn(`⚠️ ${selectedLeads.length - validLeads.length} leads inválidos foram ignorados`);
+            }
+            
+            // Atualizar etapa de todos os leads selecionados
+            const leadsToUpdate = validLeads.map(lead => ({
+                ...lead,
+                etapa_atual: targetStage
+            }));
+            
+            const result = await this.dbService.bulkUpdateLeads(leadsToUpdate);
 
             if (result.success) {
                 this.selectedLeads.clear();
@@ -1816,6 +1837,10 @@ export class AdminPanel {
             option.textContent = `Etapa ${i}`;
             stageFilter.appendChild(option);
         }
+    }
+
+    getSelectedLeads() {
+        return this.leads.filter(lead => this.selectedLeads.has(lead.id));
     }
 }
 
