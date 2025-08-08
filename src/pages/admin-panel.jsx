@@ -1347,15 +1347,17 @@ export class AdminPanel {
     async massUpdateStages(leadIds, direction) {
         const action = direction > 0 ? 'avançar' : 'retroceder';
         
-        if (!confirm(`Tem certeza que deseja ${action} ${leadIds.length} lead(s) no Supabase?`)) return;
+            const selectedArray = Array.from(this.selectedLeads);
+            if (selectedArray.length === 0) {
+            }
 
         try {
             console.log(`📊 Atualizando etapas em massa no Supabase (${action})...`);
             
-            // Atualizar cada lead individualmente para calcular nova etapa
+            console.log(`📊 Atualizando ${selectedArray.length} leads`);
             let updatedCount = 0;
             
-            for (const leadId of leadIds) {
+            for (const leadId of selectedArray) {
                 const lead = this.leads.find(l => l.id === leadId);
                 if (lead) {
                     const currentStage = lead.etapa_atual || 1;
@@ -1423,24 +1425,39 @@ export class AdminPanel {
             if (validLeads.length !== selectedLeads.length) {
                 console.warn(`⚠️ ${selectedLeads.length - validLeads.length} leads inválidos foram ignorados`);
             }
-            
+                    cpf: lead.cpf,
             // Atualizar etapa de todos os leads selecionados
             const leadsToUpdate = filteredValidLeads.map(lead => ({
                 ...lead,
                 etapa_atual: targetStage
             }));
             
-            const bulkUpdateResult = await this.dbService.bulkUpdateLeads(leadsToUpdate);
-
-            if (bulkUpdateResult.success) {
-                alert(`✅ ${bulkUpdateResult.successCount} de ${filteredValidLeads.length} leads atualizados para etapa ${targetStage}`);
-                await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
-                this.showNotification(`${bulkUpdateResult.data.length} lead(s) definidos para etapa ${targetStage} no Supabase!`, 'success');
-                console.log(`✅ ${bulkUpdateResult.data.length} leads atualizados no Supabase`);
-            } else {
-                console.error('❌ Erro ao definir etapa:', bulkUpdateResult.error);
-                this.showNotification('Erro ao definir etapa: ' + bulkUpdateResult.error, 'error');
+            // Atualizar um por vez para garantir que funcione
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (const update of updates) {
+                const updateResult = await this.dbService.updateLeadStage(update.cpf, update.etapa_atual);
+                if (updateResult.success) {
+                    successCount++;
+                    // Atualizar UI
+                    const lead = this.leads.find(l => l.cpf === update.cpf);
+                    if (lead) {
+                        this.updateLeadStageInUI(lead.id, update.etapa_atual);
+                    }
+                } else {
+                    errorCount++;
+                }
             }
+            if (errorCount === 0) {
+                console.log('✅ Atualização em massa concluída');
+                this.showNotification(`${successCount} leads atualizados com sucesso`, 'success');
+            } else {
+                console.warn(`⚠️ Atualização parcial: ${successCount} sucessos, ${errorCount} erros`);
+                this.showNotification(`${successCount} leads atualizados, ${errorCount} com erro`, 'warning');
+            }
+            
+            this.updateStats();
             
         } catch (error) {
             console.error('❌ Erro ao definir etapa:', error);
