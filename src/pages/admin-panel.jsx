@@ -479,7 +479,7 @@ export class AdminPanel {
             return;
         }
 
-                await this.dbService.updateLeadStage(lead.cpf, newStage);
+        if (!confirm(`Tem certeza que deseja RETROCEDER todos os ${this.filteredLeads.length} leads exibidos para a etapa anterior?`)) return;
 
         try {
             console.log(`📉 Retrocedendo todos os ${this.filteredLeads.length} leads...`);
@@ -1372,7 +1372,7 @@ export class AdminPanel {
                 this.selectedLeads.clear();
                 await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
                 this.showNotification(`${result.data.length} lead(s) definidos para etapa ${newStage} no Supabase!`, 'success');
-                await this.dbService.updateLeadStage(cpf, stageNumber);
+                console.log(`✅ ${result.data.length} leads atualizados no Supabase`);
             } else {
                 console.error('❌ Erro ao definir etapa:', result.error);
                 this.showNotification('Erro ao definir etapa: ' + result.error, 'error');
@@ -1396,6 +1396,8 @@ export class AdminPanel {
                 const result = await this.dbService.deleteLead(leadId);
                 if (result.success) {
                     deletedCount++;
+                } else {
+                    console.warn(`⚠️ Erro ao deletar lead ${leadId}:`, result.error);
                 }
             }
             
