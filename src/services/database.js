@@ -175,14 +175,22 @@ export class DatabaseService {
                 throw new Error('CPF é obrigatório para atualizar etapa');
             }
             
-            if (typeof cpf !== 'string') {
-                throw new Error('CPF deve ser uma string válida');
-            }
+            // Converter para string se necessário
+            const cpfString = cpf.toString();
             
-            const cleanCPF = cpf.replace(/[^\d]/g, '');
+            const cleanCPF = cpfString.replace(/[^\d]/g, '');
             
             if (cleanCPF.length !== 11) {
-                throw new Error(`CPF inválido: ${cpf} (deve ter 11 dígitos)`);
+                console.warn(`⚠️ CPF com formato inválido: ${cpfString} -> ${cleanCPF}`);
+                // Se não for um CPF válido, pode ser um ID, vamos buscar o lead primeiro
+                if (cleanCPF.length === 0 || cleanCPF.length < 11) {
+                    console.log('🔍 Tentando buscar lead por ID para obter CPF...');
+                    const leadResult = await this.getLeadById(cpfString);
+                    if (leadResult.success && leadResult.data) {
+                        return this.updateLeadStage(leadResult.data.cpf, newStage);
+                    }
+                }
+                throw new Error(`CPF inválido: ${cpfString} (deve ter 11 dígitos)`);
             }
             
             console.log('🔄 Tentando atualizar etapa do lead:', cleanCPF, 'para etapa:', newStage);
@@ -196,6 +204,11 @@ export class DatabaseService {
             if (error) {
                 console.error('❌ Erro ao atualizar etapa:', error);
                 return { success: false, error: error.message };
+            }
+
+            if (!data || data.length === 0) {
+                console.warn('⚠️ Nenhum lead encontrado para CPF:', cleanCPF);
+                return { success: false, error: 'Lead não encontrado' };
             }
 
             console.log('✅ Etapa atualizada com sucesso:', data);
