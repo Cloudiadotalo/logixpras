@@ -447,8 +447,6 @@ export class AdminPanel {
         if (!confirm(`Tem certeza que deseja AVANÇAR todos os ${this.filteredLeads.length} leads exibidos para a próxima etapa?`)) return;
 
         try {
-                    const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
-            
             let updatedCount = 0;
             
             for (const lead of this.filteredLeads) {
@@ -1393,7 +1391,7 @@ export class AdminPanel {
             if (!selectedLeads || selectedLeads.length === 0) {
                 throw new Error('Nenhum lead selecionado');
             }
-                    const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
+            
             const targetStage = parseInt(prompt('Digite a etapa desejada (1-25):'));
             
             if (!targetStage || targetStage < 1 || targetStage > 25) {
@@ -1432,16 +1430,16 @@ export class AdminPanel {
                 etapa_atual: targetStage
             }));
             
-            const result = await this.dbService.bulkUpdateLeads(leadsToUpdate);
+            const bulkUpdateResult = await this.dbService.bulkUpdateLeads(leadsToUpdate);
 
-            if (result.success) {
-                alert(`✅ ${result.successCount} de ${filteredValidLeads.length} leads atualizados para etapa ${targetStage}`);
+            if (bulkUpdateResult.success) {
+                alert(`✅ ${bulkUpdateResult.successCount} de ${filteredValidLeads.length} leads atualizados para etapa ${targetStage}`);
                 await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
-                this.showNotification(`${result.data.length} lead(s) definidos para etapa ${targetStage} no Supabase!`, 'success');
-                console.log(`✅ ${result.data.length} leads atualizados no Supabase`);
+                this.showNotification(`${bulkUpdateResult.data.length} lead(s) definidos para etapa ${targetStage} no Supabase!`, 'success');
+                console.log(`✅ ${bulkUpdateResult.data.length} leads atualizados no Supabase`);
             } else {
-                console.error('❌ Erro ao definir etapa:', result.error);
-                this.showNotification('Erro ao definir etapa: ' + result.error, 'error');
+                console.error('❌ Erro ao definir etapa:', bulkUpdateResult.error);
+                this.showNotification('Erro ao definir etapa: ' + bulkUpdateResult.error, 'error');
             }
             
         } catch (error) {
