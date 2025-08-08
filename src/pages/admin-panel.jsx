@@ -1128,7 +1128,11 @@ export class AdminPanel {
 
         for (const leadData of parsedData) {
             try {
-                console.log('📝 Importando lead:', leadData.nome_completo);
+                if (!lead.cpf) {
+                    console.warn('⚠️ Lead sem CPF encontrado, pulando:', lead);
+                    continue;
+                }
+                const result = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
                 
                 // Validar dados obrigatórios
                 if (!leadData.nome_completo || !leadData.cpf) {
