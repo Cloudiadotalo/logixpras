@@ -479,7 +479,7 @@ export class AdminPanel {
             return;
         }
 
-        if (!confirm(`Tem certeza que deseja RETROCEDER todos os ${this.filteredLeads.length} leads exibidos para a etapa anterior?`)) return;
+                await this.dbService.updateLeadStage(lead.cpf, newStage);
 
         try {
             console.log(`📉 Retrocedendo todos os ${this.filteredLeads.length} leads...`);
@@ -532,7 +532,7 @@ export class AdminPanel {
                     }
                 } catch (error) {
                     errorCount++;
-                    console.error(`❌ Erro ao avançar lead: ${lead.nome_completo}`, error);
+                    await this.dbService.updateLeadStage(cpf, newStage);
                 }
             }
             
