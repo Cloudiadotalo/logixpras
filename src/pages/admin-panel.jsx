@@ -1372,7 +1372,7 @@ export class AdminPanel {
                 this.selectedLeads.clear();
                 await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
                 this.showNotification(`${result.data.length} lead(s) definidos para etapa ${newStage} no Supabase!`, 'success');
-                console.log(`✅ ${result.data.length} leads atualizados no Supabase`);
+                await this.dbService.updateLeadStage(cpf, stageNumber);
             } else {
                 console.error('❌ Erro ao definir etapa:', result.error);
                 this.showNotification('Erro ao definir etapa: ' + result.error, 'error');
