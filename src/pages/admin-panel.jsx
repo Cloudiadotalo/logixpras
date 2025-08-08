@@ -521,7 +521,7 @@ export class AdminPanel {
         
         try {
             for (const lead of this.leads) {
-                try {
+                const result = await this.dbService.updateLeadStage(lead.cpf, Math.max(1, lead.etapa_atual - 1));
                     const result = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
                     
                     if (result.success) {

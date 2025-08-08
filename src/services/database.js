@@ -240,6 +240,38 @@ export class DatabaseService {
         }
     }
 
+    async updateLead(cpf, newStage) {
+        // Wrapper method for compatibility
+        return await this.updateLeadStage(cpf, newStage);
+    }
+
+    async bulkUpdateLeads(leads) {
+        try {
+            console.log('🔄 Atualizando leads em massa:', leads.length);
+            
+            const results = [];
+            for (const lead of leads) {
+                const result = await this.updateLeadStage(lead.cpf, lead.etapa_atual);
+                results.push(result);
+            }
+            
+            const successCount = results.filter(r => r.success).length;
+            const errorCount = results.filter(r => !r.success).length;
+            
+            console.log(`✅ Atualização em massa concluída: ${successCount} sucessos, ${errorCount} erros`);
+            
+            return {
+                success: errorCount === 0,
+                results,
+                successCount,
+                errorCount
+            };
+        } catch (error) {
+            console.error('❌ Erro crítico na atualização em massa:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     async testConnection() {
         try {
             console.log('🔍 Testando conexão com Supabase...');
