@@ -7,7 +7,7 @@ import { CPFValidator } from '../utils/cpf-validator.js';
 
 export class AdminPanel {
     constructor() {
-        this.selectedLeads = new Set();
+        this.selectedLeads = [];
         this.dbService = new DatabaseService();
         this.leads = [];
         this.filteredLeads = [];
@@ -524,20 +524,28 @@ export class AdminPanel {
                 throw new Error('Lista de leads não está disponível');
             }
             
+            let successCount = 0;
+            let errorCount = 0;
+            
             for (const lead of this.leads) {
                 if (!lead.cpf) {
                     console.warn('⚠️ Lead sem CPF encontrado, pulando:', lead);
                     continue;
                 }
                 
-                const result = await this.dbService.updateLeadStage(lead.cpf, Math.max(1, lead.etapa_atual - 1));
-                const result2 = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
+                const currentStage = lead.etapa_atual || 1;
+                const newStage = Math.min(26, currentStage + 1);
                 
-                if (result2.success) {
+                console.log(`📊 Atualizando etapa no Supabase: ${currentStage} → ${newStage}`);
+                const updateResult = await this.dbService.updateLeadStage(lead.cpf, newStage);
+                
+                if (updateResult.success) {
+                    lead.etapa_atual = newStage;
                     successCount++;
+                    console.log(`✅ Lead ${lead.nome_completo} atualizado para etapa ${newStage}`);
                 } else {
                     errorCount++;
-                    console.error(`❌ Erro ao avançar lead: ${lead.nome_completo}`, result2.error);
+                    console.error(`❌ Erro ao atualizar ${lead.nome_completo}:`, updateResult.error);
                 }
             }
             
@@ -562,10 +570,29 @@ export class AdminPanel {
         console.log(`📉 Retrocedendo ${this.filteredLeads.length} leads...`);
         
         try {
-            for (const lead of this.filteredLeads) {
-                const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
-                await this.dbService.updateLead(lead.id, { etapa_atual: prevStage });
-                console.log(`✅ Lead ${lead.nome_completo} retrocedido para etapa ${prevStage}`);
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (const lead of this.leads) {
+                if (!lead.cpf) {
+                    console.warn('⚠️ Lead sem CPF encontrado, pulando:', lead);
+                    continue;
+                }
+                
+                const currentStage = lead.etapa_atual || 1;
+                const newStage = Math.max(1, currentStage - 1);
+                
+                console.log(`📊 Atualizando etapa no Supabase: ${currentStage} → ${newStage}`);
+                const updateResult = await this.dbService.updateLeadStage(lead.cpf, newStage);
+                
+                if (updateResult.success) {
+                    lead.etapa_atual = newStage;
+                    successCount++;
+                    console.log(`✅ Lead ${lead.nome_completo} atualizado para etapa ${newStage}`);
+                } else {
+                    errorCount++;
+                    console.error(`❌ Erro ao atualizar ${lead.nome_completo}:`, updateResult.error);
+                }
             }
             
             alert(`✅ ${this.filteredLeads.length} leads retrocedidos com sucesso!`);
@@ -639,7 +666,7 @@ export class AdminPanel {
         let tableHTML = '';
         
         pageLeads.forEach(lead => {
-            const isSelected = this.selectedLeads.has(lead.id);
+            const isSelected = this.selectedLeads.some(l => l.id === lead.id);
             const products = Array.isArray(lead.produtos) ? lead.produtos : [];
             const productName = products.length > 0 ? products[0].nome : 'Produto não informado';
             const formattedCPF = CPFValidator.formatCPF(lead.cpf || '');
@@ -726,9 +753,9 @@ export class AdminPanel {
             const currentStage = lead.etapa_atual || 1;
             const newStage = Math.max(1, Math.min(26, currentStage + direction));
             
-            console.log(`📊 Atualizando etapa no Supabase: ${currentStage} → ${newStage}`);
+            console.log(`📊 Atualizando etapa no Supabase: ${lead.etapa_atual} → ${newStage}`);
             
-            const updateResult = await this.dbService.updateLeadStage(leadId, newStage);
+            const updateResult = await this.dbService.updateLeadStage(lead.cpf, newStage);
 
             if (updateResult.success) {
                 console.log('✅ Etapa atualizada no Supabase via painel');
@@ -758,13 +785,7 @@ export class AdminPanel {
             if (result.success) {
                 console.log('✅ Lead excluído do Supabase via painel');
                 await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
-            // Encontrar o lead pelo ID para obter o CPF
-            const lead = this.allLeads.find(l => l.id === leadId);
-            if (!lead || !lead.cpf) {
-                throw new Error('Lead não encontrado ou CPF ausente');
-            }
-            
-            const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
+                this.showNotification('Lead excluído com sucesso!', 'success');
             } else {
                 console.error('❌ Erro ao excluir lead:', result.error);
                 this.showNotification('Erro ao excluir lead: ' + result.error, 'error');
@@ -1300,14 +1321,14 @@ export class AdminPanel {
     }
 
     async handleMassAction(action) {
-        if (this.selectedLeads.size === 0) {
+        if (this.selectedLeads.length === 0) {
             this.showNotification('Nenhum lead selecionado', 'error');
             return;
         }
 
-        console.log(`🔧 Ação em massa no Supabase: ${action} para ${this.selectedLeads.size} leads`);
+        console.log(`🔧 Ação em massa no Supabase: ${action} para ${this.selectedLeads.length} leads`);
 
-        const selectedIds = Array.from(this.selectedLeads);
+        const selectedIds = this.selectedLeads.map(lead => lead.id);
         
         switch (action) {
             case 'nextStage':
@@ -1352,7 +1373,7 @@ export class AdminPanel {
                 }
             }
             
-            this.selectedLeads.clear();
+            this.selectedLeads = [];
             await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
             
             this.showNotification(`${updatedCount} lead(s) ${action === 'avançar' ? 'avançados' : 'retrocedidos'} no Supabase!`, 'success');
@@ -1392,13 +1413,9 @@ export class AdminPanel {
                 throw new Error('Nenhum lead válido selecionado (todos sem CPF)');
             }
             
-            if (!Array.isArray(this.selectedLeads)) {
-                console.error('❌ selectedLeads não é um array:', typeof this.selectedLeads);
-                throw new Error('selectedLeads não é um array válido');
-            }
-            
-            // Filtrar leads válidos (com CPF)
-            const filteredValidLeads = this.selectedLeads.filter(lead => lead && lead.cpf);
+            // Converter Set para Array e filtrar leads válidos
+            const selectedArray = this.selectedLeads;
+            const filteredValidLeads = selectedArray.filter(lead => lead && lead.cpf);
             
             if (filteredValidLeads.length === 0) {
                 alert('Nenhum lead válido selecionado (CPF ausente)');
@@ -1448,7 +1465,7 @@ export class AdminPanel {
                 }
             }
             
-            this.selectedLeads.clear();
+            this.selectedLeads = [];
             await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
             
             this.showNotification(`${deletedCount} lead(s) excluído(s) do Supabase!`, 'success');
@@ -1462,9 +1479,12 @@ export class AdminPanel {
 
     toggleLeadSelection(leadId, isSelected) {
         if (isSelected) {
-            this.selectedLeads.add(leadId);
+            const lead = this.leads.find(l => l.id === leadId);
+            if (lead && !this.selectedLeads.find(l => l.id === leadId)) {
+                this.selectedLeads.push(lead);
+            }
         } else {
-            this.selectedLeads.delete(leadId);
+            this.selectedLeads = this.selectedLeads.filter(l => l.id !== leadId);
         }
         this.updateSelectedCount();
     }
@@ -1472,12 +1492,10 @@ export class AdminPanel {
     toggleSelectAll(isChecked) {
         if (isChecked) {
             // Select all visible leads
-            this.filteredLeads.forEach(lead => {
-                this.selectedLeads.add(lead.id);
-            });
+            this.selectedLeads = [...this.leads];
         } else {
             // Clear all selections
-            this.selectedLeads.clear();
+            this.selectedLeads = [];
         }
         this.renderLeadsTable();
         this.updateSelectedCount();
@@ -1487,7 +1505,7 @@ export class AdminPanel {
         const selectedCount = document.getElementById('selectedCount');
         const massActionButtons = document.querySelectorAll('.mass-action-button');
         const actionCounts = document.querySelectorAll('.action-count');
-        const count = this.selectedLeads.size;
+        const count = this.selectedLeads.length;
 
         if (selectedCount) {
             selectedCount.textContent = `${count} selecionados`;
@@ -1627,7 +1645,7 @@ export class AdminPanel {
     updateStats(leads) {
         // Update statistics counters
         const leadsCount = this.leads.length;
-        const selectedCount = this.selectedLeads.size;
+        const selectedCount = this.selectedLeads.length;
         const paidCount = this.leads.filter(lead => lead.status_pagamento === 'pago').length;
         const pendingCount = this.leads.filter(lead => lead.status_pagamento === 'pendente').length;
 
@@ -1872,7 +1890,7 @@ export class AdminPanel {
     }
 
     getSelectedLeads() {
-        return this.leads.filter(lead => this.selectedLeads.has(lead.id));
+        return this.leads.filter(lead => this.selectedLeads.some(l => l.id === lead.id));
     }
 }
 
