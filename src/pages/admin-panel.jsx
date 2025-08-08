@@ -1318,41 +1318,6 @@ export class AdminPanel {
         }
     }
 
-    async handleMassAction(actionType) {
-        console.log('🔄 Executando ação em massa:', actionType);
-        
-        const selectedLeads = this.getSelectedLeads();
-        
-        if (selectedLeads.length === 0) {
-            alert('Selecione pelo menos um lead para executar a ação em massa.');
-            return;
-        }
-
-        console.log('📋 Leads selecionados para ação em massa:', selectedLeads.length);
-
-        try {
-            switch (actionType) {
-                case 'next':
-                    await this.massNextStage(selectedLeads);
-                    break;
-                case 'prev':
-                    await this.massPrevStage(selectedLeads);
-                    break;
-                case 'set':
-                    await this.massSetStage(selectedLeads);
-                    break;
-                case 'delete':
-                    await this.massDeleteLeads(selectedLeads);
-                    break;
-                default:
-                    console.warn('⚠️ Ação em massa desconhecida:', actionType);
-            }
-        } catch (error) {
-            console.error('❌ Erro na ação em massa:', error);
-            alert('Erro ao executar ação em massa: ' + error.message);
-        }
-    }
-
     async handleMassAction(action) {
         if (this.selectedLeads.length === 0) {
             this.showNotification('Nenhum lead selecionado', 'error');
@@ -1419,6 +1384,48 @@ export class AdminPanel {
             console.error(`❌ Erro ao ${action} leads:`, error);
             this.showNotification(`Erro ao ${action} leads: ` + error.message, 'error');
         }
+    }
+
+    async massNextStage(selectedLeads) {
+        console.log('⏭️ Avançando etapa em massa...');
+        
+        if (selectedLeads.length === 0) {
+            alert('Selecione pelo menos um lead para avançar a etapa.');
+            return;
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const lead of selectedLeads) {
+            try {
+                const currentStage = parseInt(lead.etapa_atual) || 1;
+                const newStage = Math.min(currentStage + 1, 25);
+                
+                console.log(`📈 Avançando lead ${lead.nome_completo} da etapa ${currentStage} para ${newStage}`);
+                
+                const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
+                
+                if (result.success) {
+                    successCount++;
+                    // Atualizar o lead na lista local
+                    lead.etapa_atual = newStage;
+                } else {
+                    errorCount++;
+                    console.error('❌ Erro ao avançar etapa do lead:', lead.nome_completo, result.error);
+                }
+            } catch (error) {
+                errorCount++;
+                console.error('❌ Erro crítico ao avançar etapa:', error);
+            }
+        }
+
+        console.log(`✅ Ação concluída: ${successCount} sucessos, ${errorCount} erros`);
+        alert(`Etapas avançadas: ${successCount} sucessos, ${errorCount} erros`);
+        
+        // Recarregar dados
+        await this.loadLeads();
+        this.clearSelection();
     }
 
     async massSetStage(leadIds) {
