@@ -170,7 +170,21 @@ export class DatabaseService {
 
     async updateLeadStage(cpf, newStage) {
         try {
+            // Validar parâmetros de entrada
+            if (!cpf) {
+                throw new Error('CPF é obrigatório para atualizar etapa');
+            }
+            
+            if (typeof cpf !== 'string') {
+                throw new Error('CPF deve ser uma string válida');
+            }
+            
             const cleanCPF = cpf.replace(/[^\d]/g, '');
+            
+            if (cleanCPF.length !== 11) {
+                throw new Error(`CPF inválido: ${cpf} (deve ter 11 dígitos)`);
+            }
+            
             console.log('🔄 Tentando atualizar etapa do lead:', cleanCPF, 'para etapa:', newStage);
 
             const { data, error } = await this.supabase
@@ -194,7 +208,21 @@ export class DatabaseService {
 
     async updatePaymentStatus(cpf, status) {
         try {
+            // Validar parâmetros de entrada
+            if (!cpf) {
+                throw new Error('CPF é obrigatório para atualizar status de pagamento');
+            }
+            
+            if (typeof cpf !== 'string') {
+                throw new Error('CPF deve ser uma string válida');
+            }
+            
             const cleanCPF = cpf.replace(/[^\d]/g, '');
+            
+            if (cleanCPF.length !== 11) {
+                throw new Error(`CPF inválido: ${cpf} (deve ter 11 dígitos)`);
+            }
+            
             console.log('💳 Tentando atualizar status de pagamento:', cleanCPF, 'para:', status);
 
             const { data, error } = await this.supabase
@@ -249,8 +277,30 @@ export class DatabaseService {
         try {
             console.log('🔄 Atualizando leads em massa:', leads.length);
             
+            // Validar array de leads
+            if (!Array.isArray(leads)) {
+                throw new Error('Leads deve ser um array');
+            }
+            
+            if (leads.length === 0) {
+                return { success: true, results: [], successCount: 0, errorCount: 0 };
+            }
+            
             const results = [];
             for (const lead of leads) {
+                // Validar dados do lead antes de processar
+                if (!lead || !lead.cpf) {
+                    console.warn('⚠️ Lead sem CPF encontrado, pulando:', lead);
+                    results.push({ success: false, error: 'CPF ausente no lead' });
+                    continue;
+                }
+                
+                if (!lead.etapa_atual && lead.etapa_atual !== 0) {
+                    console.warn('⚠️ Lead sem etapa_atual encontrado, pulando:', lead);
+                    results.push({ success: false, error: 'Etapa ausente no lead' });
+                    continue;
+                }
+                
                 const result = await this.updateLeadStage(lead.cpf, lead.etapa_atual);
                 results.push(result);
             }
