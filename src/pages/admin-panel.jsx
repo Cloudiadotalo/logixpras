@@ -447,7 +447,7 @@ export class AdminPanel {
         if (!confirm(`Tem certeza que deseja AVANÇAR todos os ${this.filteredLeads.length} leads exibidos para a próxima etapa?`)) return;
 
         try {
-            console.log(`📈 Avançando todos os ${this.filteredLeads.length} leads...`);
+                    const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
             
             let updatedCount = 0;
             
@@ -1393,7 +1393,7 @@ export class AdminPanel {
             if (!selectedLeads || selectedLeads.length === 0) {
                 throw new Error('Nenhum lead selecionado');
             }
-            
+                    const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
             const targetStage = parseInt(prompt('Digite a etapa desejada (1-25):'));
             
             if (!targetStage || targetStage < 1 || targetStage > 25) {
