@@ -1383,6 +1383,11 @@ export class AdminPanel {
             const validLeads = selectedLeads.filter(lead => {
                 if (!lead || !lead.cpf) {
                     console.warn('⚠️ Lead sem CPF encontrado:', lead);
+            if (!Array.isArray(this.selectedLeads)) {
+                console.error('❌ selectedLeads não é um array:', typeof this.selectedLeads);
+                throw new Error('selectedLeads não é um array válido');
+            }
+            
                     return false;
                 }
                 return true;
