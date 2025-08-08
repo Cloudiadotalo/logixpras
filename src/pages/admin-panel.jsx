@@ -7,10 +7,10 @@ import { CPFValidator } from '../utils/cpf-validator.js';
 
 export class AdminPanel {
     constructor() {
+        this.selectedLeads = [];
         this.dbService = new DatabaseService();
         this.leads = [];
         this.filteredLeads = [];
-        this.selectedLeads = new Set();
         this.currentPage = 1;
         this.leadsPerPage = 20;
         this.isLoggedIn = false;
@@ -477,6 +477,10 @@ export class AdminPanel {
         if (this.filteredLeads.length === 0) {
             this.showNotification('Nenhum lead para retroceder', 'error');
             return;
+            if (!Array.isArray(this.leads)) {
+                throw new Error('Lista de leads não está disponível');
+            }
+            
         }
 
         if (!confirm(`Tem certeza que deseja RETROCEDER todos os ${this.filteredLeads.length} leads exibidos para a etapa anterior?`)) return;
@@ -521,6 +525,11 @@ export class AdminPanel {
         
         try {
             for (const lead of this.leads) {
+                if (!lead.cpf) {
+                    console.warn('⚠️ Lead sem CPF encontrado, pulando:', lead);
+                    continue;
+                }
+                
                 const result = await this.dbService.updateLeadStage(lead.cpf, Math.max(1, lead.etapa_atual - 1));
                 const result2 = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
                 
@@ -554,7 +563,7 @@ export class AdminPanel {
         
         try {
             for (const lead of this.filteredLeads) {
-                const prevStage = Math.max(lead.etapa_atual - 1, 1);
+                const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
                 await this.dbService.updateLead(lead.id, { etapa_atual: prevStage });
                 console.log(`✅ Lead ${lead.nome_completo} retrocedido para etapa ${prevStage}`);
             }
@@ -706,7 +715,7 @@ export class AdminPanel {
         try {
             // Validar se há leads selecionados
             if (!this.selectedLeads || this.selectedLeads.length === 0) {
-                alert('Nenhum lead selecionado');
+            await this.updateLeadStageInSupabase(lead.cpf, newStage);
                 return;
             }
             
@@ -715,7 +724,11 @@ export class AdminPanel {
                 this.showNotification('Lead não encontrado', 'error');
                 return;
             }
+            if (!lead.cpf) {
+                throw new Error('CPF não encontrado no lead');
+            }
             
+            const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
             const currentStage = lead.etapa_atual || 1;
             const newStage = Math.max(1, Math.min(26, currentStage + direction));
             
@@ -1642,6 +1655,10 @@ export class AdminPanel {
         try {
             // Testar conexão com Supabase
             await this.loadLeadsFromSupabase();
+            
+            if (!cpf) {
+                throw new Error('CPF é obrigatório para atualizar etapa');
+            }
             
             const connectionTest = await this.dbService.testConnection();
             if (connectionTest.success) {
