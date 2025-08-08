@@ -1426,6 +1426,12 @@ export class AdminPanel {
                 console.warn(`⚠️ ${selectedLeads.length - validLeads.length} leads inválidos foram ignorados`);
             }
                     cpf: lead.cpf,
+                    etapa_atual: targetStage
+                }));
+
+                // Atualizar etapa de todos os leads selecionados
+                const leadsToUpdate = filteredValidLeads.map(lead => ({
+                    ...lead,
             // Atualizar etapa de todos os leads selecionados
             const leadsToUpdate = filteredValidLeads.map(lead => ({
                 ...lead,
