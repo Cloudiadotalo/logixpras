@@ -479,10 +479,6 @@ export class AdminPanel {
             return;
         }
 
-        if (!Array.isArray(this.leads)) {
-            throw new Error('Lista de leads não está disponível');
-        }
-
         if (!confirm(`Tem certeza que deseja RETROCEDER todos os ${this.filteredLeads.length} leads exibidos para a etapa anterior?`)) return;
 
         try {
@@ -524,8 +520,9 @@ export class AdminPanel {
         console.log(`📈 Avançando ${this.filteredLeads.length} leads...`);
         
         try {
-            let successCount = 0;
-            let errorCount = 0;
+            if (!Array.isArray(this.leads)) {
+                throw new Error('Lista de leads não está disponível');
+            }
             
             for (const lead of this.leads) {
                 if (!lead.cpf) {
@@ -566,10 +563,9 @@ export class AdminPanel {
         
         try {
             for (const lead of this.filteredLeads) {
-                const newStage = Math.max(1, lead.etapa_atual - 1);
                 const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
-                await this.dbService.updateLead(lead.id, { etapa_atual: newStage });
-                console.log(`✅ Lead ${lead.nome_completo} retrocedido para etapa ${newStage}`);
+                await this.dbService.updateLead(lead.id, { etapa_atual: prevStage });
+                console.log(`✅ Lead ${lead.nome_completo} retrocedido para etapa ${prevStage}`);
             }
             
             alert(`✅ ${this.filteredLeads.length} leads retrocedidos com sucesso!`);
@@ -1371,7 +1367,7 @@ export class AdminPanel {
                 throw new Error('Nenhum lead selecionado');
             }
             
-            const targetStage = prompt('Digite a etapa desejada (1-26):');
+            const targetStage = parseInt(prompt('Digite a etapa desejada (1-25):'));
             
             if (!targetStage || targetStage < 1 || targetStage > 25) {
                 throw new Error('Etapa inválida');
@@ -1390,12 +1386,25 @@ export class AdminPanel {
                 throw new Error('Nenhum lead válido selecionado (todos sem CPF)');
             }
             
+            if (!Array.isArray(this.selectedLeads)) {
+                console.error('❌ selectedLeads não é um array:', typeof this.selectedLeads);
+                throw new Error('selectedLeads não é um array válido');
+            }
+            
+            // Filtrar leads válidos (com CPF)
+            const filteredValidLeads = this.selectedLeads.filter(lead => lead && lead.cpf);
+            
+            if (filteredValidLeads.length === 0) {
+                alert('Nenhum lead válido selecionado (CPF ausente)');
+                return;
+            }
+            
             if (validLeads.length !== selectedLeads.length) {
                 console.warn(`⚠️ ${selectedLeads.length - validLeads.length} leads inválidos foram ignorados`);
             }
             
             // Atualizar etapa de todos os leads selecionados
-            const leadsToUpdate = validLeads.map(lead => ({
+            const leadsToUpdate = filteredValidLeads.map(lead => ({
                 ...lead,
                 etapa_atual: targetStage
             }));
@@ -1403,9 +1412,9 @@ export class AdminPanel {
             const result = await this.dbService.bulkUpdateLeads(leadsToUpdate);
 
             if (result.success) {
-                alert(`✅ ${result.successCount} de ${validLeads.length} leads atualizados para etapa ${targetStage}`);
+                alert(`✅ ${result.successCount} de ${filteredValidLeads.length} leads atualizados para etapa ${targetStage}`);
                 await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
-                this.selectedLeads.clear();
+                this.showNotification(`${result.data.length} lead(s) definidos para etapa ${targetStage} no Supabase!`, 'success');
                 console.log(`✅ ${result.data.length} leads atualizados no Supabase`);
             } else {
                 console.error('❌ Erro ao definir etapa:', result.error);
@@ -1469,10 +1478,10 @@ export class AdminPanel {
     }
 
     updateSelectedCount() {
-        const count = this.selectedLeads.size;
+        const selectedCount = document.getElementById('selectedCount');
         const massActionButtons = document.querySelectorAll('.mass-action-button');
         const actionCounts = document.querySelectorAll('.action-count');
-        const selectedCount = document.getElementById('selectedCount');
+        const count = this.selectedLeads.size;
 
         if (selectedCount) {
             selectedCount.textContent = `${count} selecionados`;
@@ -1641,7 +1650,6 @@ export class AdminPanel {
         this.showNotification('Recarregando sistema da transportadora...', 'info');
         
         try {
-            this.selectedLeads.clear();
             // Testar conexão com Supabase
             await this.loadLeadsFromSupabase();
             
