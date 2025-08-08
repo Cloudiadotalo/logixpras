@@ -734,9 +734,9 @@ export class AdminPanel {
             
             console.log(`📊 Atualizando etapa no Supabase: ${currentStage} → ${newStage}`);
             
-            const result = await this.dbService.updateLeadStage(leadId, newStage);
+            const updateResult = await this.dbService.updateLeadStage(leadId, newStage);
 
-            if (result.success) {
+            if (updateResult.success) {
                 console.log('✅ Etapa atualizada no Supabase via painel');
                 await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
                 
