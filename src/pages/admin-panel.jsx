@@ -522,17 +522,13 @@ export class AdminPanel {
         try {
             for (const lead of this.leads) {
                 const result = await this.dbService.updateLeadStage(lead.cpf, Math.max(1, lead.etapa_atual - 1));
-                    const result = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
-                    
-                    if (result.success) {
-                        successCount++;
-                    } else {
-                        errorCount++;
-                        console.error(`❌ Erro ao avançar lead: ${lead.nome_completo}`, result.error);
-                    }
-                } catch (error) {
+                const result2 = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
+                
+                if (result2.success) {
+                    successCount++;
+                } else {
                     errorCount++;
-                    await this.dbService.updateLeadStage(cpf, newStage);
+                    console.error(`❌ Erro ao avançar lead: ${lead.nome_completo}`, result2.error);
                 }
             }
             
@@ -1610,6 +1606,7 @@ export class AdminPanel {
             // Testar conexão com Supabase
             await this.loadLeadsFromSupabase();
             
+            const connectionTest = await this.dbService.testConnection();
             if (connectionTest.success) {
                 console.log('✅ Conexão com Supabase OK');
                 
