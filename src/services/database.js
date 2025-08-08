@@ -219,6 +219,33 @@ export class DatabaseService {
         }
     }
 
+    async getLeadById(id) {
+        try {
+            console.log('🔍 Buscando lead por ID:', id);
+
+            const { data, error } = await this.supabase
+                .from('leads')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    console.log('📝 Lead não encontrado para ID:', id);
+                    return { success: false, error: 'Lead não encontrado' };
+                }
+                console.error('❌ Erro ao buscar lead por ID:', error);
+                return { success: false, error: error.message };
+            }
+
+            console.log('✅ Lead encontrado por ID:', data);
+            return { success: true, data };
+        } catch (error) {
+            console.error('❌ Erro crítico ao buscar lead por ID:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     async updatePaymentStatus(cpf, status) {
         try {
             // Validar parâmetros de entrada
