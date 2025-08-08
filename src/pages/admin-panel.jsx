@@ -1389,7 +1389,9 @@ export class AdminPanel {
             
             if (validLeads.length !== selectedLeads.length) {
                 console.warn(`⚠️ ${selectedLeads.length - validLeads.length} leads inválidos foram ignorados`);
+            }
             for (const lead of validLeads) {
+            }
             
             // Atualizar etapa de todos os leads selecionados
             const leadsToUpdate = validLeads.map(lead => ({
