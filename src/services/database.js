@@ -322,6 +322,53 @@ export class DatabaseService {
         }
     }
 
+    async getLeadsByDateRange(filters) {
+        try {
+            console.log('🔍 Buscando leads com filtros:', filters);
+
+            let query = this.supabase.from('leads').select('*');
+            
+            // Filtro por busca (nome ou CPF)
+            if (filters.searchQuery && filters.searchQuery.trim()) {
+                const searchTerm = filters.searchQuery.trim();
+                query = query.or(`nome_completo.ilike.%${searchTerm}%,cpf.ilike.%${searchTerm}%`);
+            }
+            
+            // Filtro por data de início
+            if (filters.startDate) {
+                query = query.gte('created_at', filters.startDate);
+            }
+            
+            // Filtro por data de fim
+            if (filters.endDate) {
+                const endDateTime = new Date(filters.endDate);
+                endDateTime.setHours(23, 59, 59, 999);
+                query = query.lte('created_at', endDateTime.toISOString());
+            }
+            
+            // Filtro por etapa
+            if (filters.stageFilter && filters.stageFilter !== 'all') {
+                query = query.eq('etapa_atual', parseInt(filters.stageFilter));
+            }
+            
+            // Ordenar por data de criação (mais recentes primeiro)
+            query = query.order('created_at', { ascending: false });
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('❌ Erro ao buscar leads com filtros:', error);
+                return { success: false, error: error.message };
+            }
+
+            console.log('✅ Leads filtrados encontrados:', data.length);
+            return { success: true, data };
+        } catch (error) {
+            console.error('❌ Erro crítico ao buscar leads com filtros:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     async testConnection() {
         try {
             console.log('🔍 Testando conexão com Supabase...');
