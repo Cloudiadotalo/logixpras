@@ -1380,9 +1380,9 @@ export class AdminPanel {
             }
             
             // Filtrar leads válidos (com CPF)
-            const validLeads = this.selectedLeads.filter(lead => lead && lead.cpf);
+            const filteredValidLeads = this.selectedLeads.filter(lead => lead && lead.cpf);
             
-            if (validLeads.length === 0) {
+            if (filteredValidLeads.length === 0) {
                 alert('Nenhum lead válido selecionado (CPF ausente)');
                 return;
             }
@@ -1394,7 +1394,7 @@ export class AdminPanel {
             }
             
             // Atualizar etapa de todos os leads selecionados
-            const leadsToUpdate = validLeads.map(lead => ({
+            const leadsToUpdate = filteredValidLeads.map(lead => ({
                 ...lead,
                 etapa_atual: targetStage
             }));
@@ -1402,7 +1402,7 @@ export class AdminPanel {
             const result = await this.dbService.bulkUpdateLeads(leadsToUpdate);
 
             if (result.success) {
-                this.selectedLeads.clear();
+                alert(`✅ ${result.successCount} de ${filteredValidLeads.length} leads atualizados para etapa ${targetStage}`);
                 await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
                 this.showNotification(`${result.data.length} lead(s) definidos para etapa ${newStage} no Supabase!`, 'success');
                 console.log(`✅ ${result.data.length} leads atualizados no Supabase`);
@@ -1650,7 +1650,7 @@ export class AdminPanel {
                 // Recarregar dados
                 await this.loadLeads();
                 this.showNotification('Sistema da transportadora recarregado com sucesso!', 'success');
-            } else {
+                throw new Error(`Falha na atualização: ${result.errorCount} erros de ${filteredValidLeads.length} leads`);
                 console.error('❌ Falha na conexão com Supabase:', connectionTest.error);
                 this.showNotification('Erro na conexão com Supabase: ' + connectionTest.error, 'error');
             }
