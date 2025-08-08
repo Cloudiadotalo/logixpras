@@ -1318,6 +1318,41 @@ export class AdminPanel {
         }
     }
 
+    async handleMassAction(actionType) {
+        console.log('🔄 Executando ação em massa:', actionType);
+        
+        const selectedLeads = this.getSelectedLeads();
+        
+        if (selectedLeads.length === 0) {
+            alert('Selecione pelo menos um lead para executar a ação em massa.');
+            return;
+        }
+
+        console.log('📋 Leads selecionados para ação em massa:', selectedLeads.length);
+
+        try {
+            switch (actionType) {
+                case 'next':
+                    await this.massNextStage(selectedLeads);
+                    break;
+                case 'prev':
+                    await this.massPrevStage(selectedLeads);
+                    break;
+                case 'set':
+                    await this.massSetStage(selectedLeads);
+                    break;
+                case 'delete':
+                    await this.massDeleteLeads(selectedLeads);
+                    break;
+                default:
+                    console.warn('⚠️ Ação em massa desconhecida:', actionType);
+            }
+        } catch (error) {
+            console.error('❌ Erro na ação em massa:', error);
+            alert('Erro ao executar ação em massa: ' + error.message);
+        }
+    }
+
     async handleMassAction(action) {
         if (this.selectedLeads.length === 0) {
             this.showNotification('Nenhum lead selecionado', 'error');
