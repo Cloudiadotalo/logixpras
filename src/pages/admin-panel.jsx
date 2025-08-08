@@ -479,6 +479,10 @@ export class AdminPanel {
             return;
         }
 
+        if (!Array.isArray(this.leads)) {
+            throw new Error('Lista de leads não está disponível');
+        }
+
         if (!confirm(`Tem certeza que deseja RETROCEDER todos os ${this.filteredLeads.length} leads exibidos para a etapa anterior?`)) return;
 
         try {
@@ -523,23 +527,24 @@ export class AdminPanel {
             let successCount = 0;
             let errorCount = 0;
             
-            for (const lead of this.filteredLeads) {
+            for (const lead of this.leads) {
                 if (!lead.cpf) {
                     console.warn('⚠️ Lead sem CPF encontrado, pulando:', lead);
                     continue;
                 }
                 
-                const result = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
+                const result = await this.dbService.updateLeadStage(lead.cpf, Math.max(1, lead.etapa_atual - 1));
+                const result2 = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
                 
-                if (result.success) {
+                if (result2.success) {
                     successCount++;
                 } else {
                     errorCount++;
-                    console.error(`❌ Erro ao avançar lead: ${lead.nome_completo}`, result.error);
+                    console.error(`❌ Erro ao avançar lead: ${lead.nome_completo}`, result2.error);
                 }
             }
             
-            alert(`✅ ${successCount} leads avançados com sucesso!`);
+            alert(`✅ ${this.filteredLeads.length} leads avançados com sucesso!`);
             await this.loadLeadsFromSupabase();
             
         } catch (error) {
@@ -561,9 +566,10 @@ export class AdminPanel {
         
         try {
             for (const lead of this.filteredLeads) {
-                const prevStage = Math.max(1, lead.etapa_atual - 1);
-                await this.dbService.updateLead(lead.id, { etapa_atual: prevStage });
-                console.log(`✅ Lead ${lead.nome_completo} retrocedido para etapa ${prevStage}`);
+                const newStage = Math.max(1, lead.etapa_atual - 1);
+                const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
+                await this.dbService.updateLead(lead.id, { etapa_atual: newStage });
+                console.log(`✅ Lead ${lead.nome_completo} retrocedido para etapa ${newStage}`);
             }
             
             alert(`✅ ${this.filteredLeads.length} leads retrocedidos com sucesso!`);
@@ -717,12 +723,16 @@ export class AdminPanel {
                 return;
             }
             
+            if (!lead.cpf) {
+                throw new Error('CPF não encontrado no lead');
+            }
+            
             const currentStage = lead.etapa_atual || 1;
             const newStage = Math.max(1, Math.min(26, currentStage + direction));
             
             console.log(`📊 Atualizando etapa no Supabase: ${currentStage} → ${newStage}`);
             
-            const updateResult = await this.dbService.updateLead(leadId, { etapa_atual: newStage });
+            const updateResult = await this.dbService.updateLeadStage(leadId, newStage);
 
             if (updateResult.success) {
                 console.log('✅ Etapa atualizada no Supabase via painel');
@@ -1114,6 +1124,111 @@ export class AdminPanel {
         this.bulkDataToImport = null;
     }
 
+    async confirmBulkImport() {
+        const parsedData = this.bulkParsedData;
+        if (!parsedData || parsedData.length === 0) {
+            alert('Nenhum dado para importar');
+            return;
+        }
+
+        console.log('🚀 Iniciando importação em massa de', parsedData.length, 'leads');
+        
+        const confirmButton = document.getElementById('confirmBulkImportButton');
+        if (confirmButton) {
+            confirmButton.disabled = true;
+            confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        for (const leadData of parsedData) {
+            try {
+                console.log('📝 Importando lead:', leadData.nome_completo);
+                
+                // Validar dados obrigatórios
+                if (!leadData.nome_completo || !leadData.cpf) {
+                    throw new Error('Nome completo e CPF são obrigatórios');
+                }
+                
+                // Limpar e validar CPF
+                const cleanCPF = leadData.cpf.replace(/[^\d]/g, '');
+                if (cleanCPF.length !== 11) {
+                    throw new Error('CPF deve ter 11 dígitos');
+                }
+                
+                // Preparar dados para inserção
+                const leadToInsert = {
+                    nome_completo: leadData.nome_completo.trim(),
+                    cpf: cleanCPF,
+                    email: leadData.email?.trim() || null,
+                    telefone: leadData.telefone?.trim() || null,
+                    endereco: leadData.endereco?.trim() || null,
+                    valor_total: parseFloat(leadData.valor_total) || 67.90,
+                    meio_pagamento: leadData.meio_pagamento || 'PIX',
+                    origem: 'painel_admin',
+                    produtos: leadData.produtos || [],
+                    order_bumps: leadData.order_bumps || [],
+                    etapa_atual: 1,
+                    status_pagamento: 'pendente'
+                };
+                
+                console.log('💾 Dados preparados para inserção:', leadToInsert);
+                
+                const result = await this.dbService.createLead(leadData);
+                if (result.success) {
+                    successCount++;
+                    console.log('✅ Lead importado com sucesso:', leadData.nome_completo);
+                } else {
+                    errorCount++;
+                    const errorMsg = `${leadData.nome_completo}: ${result.error}`;
+                    errors.push(errorMsg);
+                    console.error('❌ Erro ao importar lead:', errorMsg);
+                }
+            } catch (error) {
+                errorCount++;
+                const errorMsg = `${leadData.nome_completo}: ${error.message}`;
+                errors.push(errorMsg);
+                console.error('❌ Erro ao importar lead:', errorMsg);
+            }
+        }
+
+        console.log('📊 Resultado da importação:', {
+            total: parsedData.length,
+            sucessos: successCount,
+            erros: errorCount
+        });
+        
+        // Restaurar botão
+        if (confirmButton) {
+            confirmButton.disabled = false;
+            confirmButton.innerHTML = '<i class="fas fa-database"></i> Confirmar Importação para Supabase';
+        }
+
+        // Mostrar resultado detalhado
+        let message = `Importação concluída!\n\n✅ Sucessos: ${successCount}\n❌ Erros: ${errorCount}`;
+        
+        if (errors.length > 0 && errors.length <= 5) {
+            message += '\n\nErros encontrados:\n' + errors.join('\n');
+        } else if (errors.length > 5) {
+            message += '\n\nPrimeiros 5 erros:\n' + errors.slice(0, 5).join('\n') + `\n... e mais ${errors.length - 5} erros`;
+        }
+        
+        alert(message);
+
+        // Limpar dados e recarregar
+        this.bulkParsedData = null;
+        document.getElementById('bulkDataTextarea').value = '';
+        document.getElementById('bulkPreviewSection').style.display = 'none';
+        
+        // Recarregar lista de leads se houve sucessos
+        if (successCount > 0) {
+            console.log('🔄 Recarregando lista de leads...');
+            await this.loadLeadsFromSupabase();
+        }
+    }
+
     async confirmBulkImport(validLines) {
         if (!validLines || validLines.length === 0) {
             this.showNotification('Nenhum dado para importar', 'error');
@@ -1248,36 +1363,54 @@ export class AdminPanel {
     }
 
     async massSetStage(leadIds) {
-        const targetStage = prompt('Digite a etapa desejada (1-26):');
-        if (!targetStage || isNaN(targetStage) || targetStage < 1 || targetStage > 26) {
-            this.showNotification('Etapa inválida', 'error');
-            return;
-        }
-
-        const newStage = parseInt(targetStage);
-        
-        if (!confirm(`Tem certeza que deseja definir ${leadIds.length} lead(s) para a etapa ${newStage} no Supabase?`)) return;
-
         try {
-            console.log(`📊 Definindo etapa ${newStage} para ${leadIds.length} leads no Supabase...`);
+            const selectedLeads = this.getSelectedLeads();
             
-            let updatedCount = 0;
-            
-            for (const leadId of leadIds) {
-                const result = await this.dbService.updateLead(leadId, {
-                    etapa_atual: newStage
-                });
-                
-                if (result.success) {
-                    updatedCount++;
-                }
+            // Validar se há leads selecionados
+            if (!selectedLeads || selectedLeads.length === 0) {
+                throw new Error('Nenhum lead selecionado');
             }
             
-            this.selectedLeads.clear();
-            await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
+            const targetStage = prompt('Digite a etapa desejada (1-26):');
             
-            this.showNotification(`${updatedCount} lead(s) definidos para etapa ${newStage} no Supabase!`, 'success');
-            console.log(`✅ ${updatedCount} leads atualizados no Supabase`);
+            if (!targetStage || targetStage < 1 || targetStage > 25) {
+                throw new Error('Etapa inválida');
+            }
+            
+            // Validar CPFs dos leads selecionados
+            const validLeads = selectedLeads.filter(lead => {
+                if (!lead || !lead.cpf) {
+                    console.warn('⚠️ Lead sem CPF encontrado:', lead);
+                    return false;
+                }
+                return true;
+            });
+            
+            if (validLeads.length === 0) {
+                throw new Error('Nenhum lead válido selecionado (todos sem CPF)');
+            }
+            
+            if (validLeads.length !== selectedLeads.length) {
+                console.warn(`⚠️ ${selectedLeads.length - validLeads.length} leads inválidos foram ignorados`);
+            }
+            
+            // Atualizar etapa de todos os leads selecionados
+            const leadsToUpdate = validLeads.map(lead => ({
+                ...lead,
+                etapa_atual: targetStage
+            }));
+            
+            const result = await this.dbService.bulkUpdateLeads(leadsToUpdate);
+
+            if (result.success) {
+                alert(`✅ ${result.successCount} de ${validLeads.length} leads atualizados para etapa ${targetStage}`);
+                await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
+                this.selectedLeads.clear();
+                console.log(`✅ ${result.data.length} leads atualizados no Supabase`);
+            } else {
+                console.error('❌ Erro ao definir etapa:', result.error);
+                this.showNotification('Erro ao definir etapa: ' + result.error, 'error');
+            }
             
         } catch (error) {
             console.error('❌ Erro ao definir etapa:', error);
@@ -1434,16 +1567,11 @@ export class AdminPanel {
         }, 30000);
     }
 
-    updateSupabaseStatus(isConnected, error) {
+    updateSupabaseStatus(message, isError = false) {
         const statusElement = document.getElementById('supabase-status');
         if (statusElement) {
-            if (isConnected) {
-                statusElement.textContent = 'Conectado';
-                statusElement.className = 'success';
-            } else {
-                statusElement.textContent = 'Erro: ' + error;
-                statusElement.className = 'error';
-            }
+            statusElement.textContent = message;
+            statusElement.className = isError ? 'error' : 'success';
         }
     }
 
@@ -1452,7 +1580,7 @@ export class AdminPanel {
             console.log('🔄 Sincronizando com Supabase...');
             
             // Atualizar status
-            this.updateSupabaseStatus(false, 'Sincronizando...');
+            this.updateSupabaseStatus('Sincronizando...', 'connecting');
             
             // Buscar todos os leads
             const result = await this.dbService.getAllLeads();
@@ -1463,10 +1591,10 @@ export class AdminPanel {
                 
                 // Atualizar interface
                 this.renderLeadsTable();
-                this.updateLeadsCount();
-                await this.loadStageCount();
+                this.updateStats();
+                this.updateStageCounters();
                 
-                this.updateSupabaseStatus(true, null);
+                this.updateSupabaseStatus('Conectado e sincronizado', 'connected');
                 console.log('✅ Sincronização com Supabase concluída');
                 
                 return { success: true, count: this.leads.length };
@@ -1475,13 +1603,13 @@ export class AdminPanel {
             }
         } catch (error) {
             console.error('❌ Erro na sincronização:', error);
-            this.updateSupabaseStatus(false, error.message);
+            this.updateSupabaseStatus('Erro na sincronização', 'error');
             return { success: false, error: error.message };
         }
     }
 
     // Método para atualizar estatísticas
-    updateStats() {
+    updateStats(leads) {
         // Update statistics counters
         const leadsCount = this.leads.length;
         const selectedCount = this.selectedLeads.size;
@@ -1513,16 +1641,16 @@ export class AdminPanel {
         this.showNotification('Recarregando sistema da transportadora...', 'info');
         
         try {
-            // Limpar seleções
             this.selectedLeads.clear();
-            
             // Testar conexão com Supabase
+            await this.loadLeadsFromSupabase();
+            
             const connectionTest = await this.dbService.testConnection();
             if (connectionTest.success) {
                 console.log('✅ Conexão com Supabase OK');
                 
                 // Recarregar dados
-                await this.loadLeadsFromSupabase();
+                await this.loadLeads();
                 this.showNotification('Sistema da transportadora recarregado com sucesso!', 'success');
             } else {
                 console.error('❌ Falha na conexão com Supabase:', connectionTest.error);
