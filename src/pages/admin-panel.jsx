@@ -7,7 +7,7 @@ import { CPFValidator } from '../utils/cpf-validator.js';
 
 export class AdminPanel {
     constructor() {
-        this.selectedLeads = [];
+        this.selectedLeads = new Set();
         this.dbService = new DatabaseService();
         this.leads = [];
         this.filteredLeads = [];
@@ -64,7 +64,7 @@ export class AdminPanel {
                     const cleanValue = value.replace(/[^\d]/g, '');
                     if (cleanValue.length <= 11) {
                         e.target.value = this.applyCPFMask(cleanValue);
-                    }
+                    checkbox.checked = this.selectedLeads.has(lead);
                 }
             });
         }
@@ -1373,14 +1373,14 @@ export class AdminPanel {
                 throw new Error('Nenhum lead selecionado');
             }
             
-            const targetStage = parseInt(prompt('Digite a etapa desejada (1-25):'));
+            if (this.selectedLeads.size === 0) {
             
             if (!targetStage || targetStage < 1 || targetStage > 25) {
                 throw new Error('Etapa inválida');
             }
-            
+            console.log(`🔄 Atualizando ${this.selectedLeads.size} leads - direção: ${direction}`);
             // Validar CPFs dos leads selecionados
-            const validLeads = selectedLeads.filter(lead => {
+            if (this.selectedLeads.size === 0) {
                 if (!lead || !lead.cpf) {
                     console.warn('⚠️ Lead sem CPF encontrado:', lead);
             if (!Array.isArray(this.selectedLeads)) {
@@ -1398,7 +1398,7 @@ export class AdminPanel {
             }
             
             // Filtrar leads válidos (com CPF)
-            const filteredValidLeads = this.selectedLeads.filter(lead => lead && lead.cpf);
+            const filteredValidLeads = Array.from(this.selectedLeads).filter(lead => lead && lead.cpf);
             
             if (filteredValidLeads.length === 0) {
                 alert('Nenhum lead válido selecionado (CPF ausente)');
@@ -1422,7 +1422,7 @@ export class AdminPanel {
             if (result.success) {
                 alert(`✅ ${result.successCount} de ${filteredValidLeads.length} leads atualizados para etapa ${targetStage}`);
                 await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
-                this.showNotification(`${result.data.length} lead(s) definidos para etapa ${newStage} no Supabase!`, 'success');
+                this.selectedLeads.clear();
                 console.log(`✅ ${result.data.length} leads atualizados no Supabase`);
             } else {
                 console.error('❌ Erro ao definir etapa:', result.error);
@@ -1459,14 +1459,11 @@ export class AdminPanel {
         } catch (error) {
             console.error('❌ Erro ao excluir leads:', error);
             this.showNotification('Erro ao excluir leads: ' + error.message, 'error');
-        }
-    }
-
+            if (!this.selectedLeads.has(lead)) {
+                this.selectedLeads.add(lead);
+            this.selectedLeads = new Set(this.leads);
     toggleLeadSelection(leadId, isSelected) {
-        if (isSelected) {
-            this.selectedLeads.add(leadId);
-        } else {
-            this.selectedLeads.delete(leadId);
+            this.selectedLeads.clear();
         }
         this.updateSelectedCount();
     }
@@ -1486,7 +1483,7 @@ export class AdminPanel {
     }
 
     updateSelectedCount() {
-        const selectedCount = document.getElementById('selectedCount');
+        const count = this.selectedLeads.size;
         const massActionButtons = document.querySelectorAll('.mass-action-button');
         const actionCounts = document.querySelectorAll('.action-count');
         const count = this.selectedLeads.size;
@@ -1657,7 +1654,7 @@ export class AdminPanel {
         console.log('🔄 Recarregando sistema da transportadora...');
         this.showNotification('Recarregando sistema da transportadora...', 'info');
         
-        try {
+            this.selectedLeads.clear();
             // Testar conexão com Supabase
             await this.loadLeadsFromSupabase();
             

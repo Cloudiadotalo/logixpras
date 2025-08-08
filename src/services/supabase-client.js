@@ -3,14 +3,20 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-// Configuração do Supabase - Agrupador de transações
-const supabaseUrl = 'https://zxizvckmvgrvhduhprfd.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4aXp2Y2ttdmdydmhkdWhwcmZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NDE3NDMsImV4cCI6MjA3MDExNzc0M30.rYD2KCL49QZLRyMa9a72EBNHvl94dSrp-W5IKyiTlNM';
+// Configuração do Supabase usando variáveis de ambiente
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://zxizvckmvgrvhduhprfd.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4aXp2Y2ttdmdydmhkdWhwcmZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NDE3NDMsImV4cCI6MjA3MDExNzc0M30.rYD2KCL49QZLRyMa9a72EBNHvl94dSrp-W5IKyiTlNM';
 
 // Criar cliente Supabase
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false // Não precisamos de autenticação para este sistema
+    persistSession: false,
+    autoRefreshToken: false
+  },
+  global: {
+    headers: {
+      'Access-Control-Allow-Origin': '*'
+    }
   }
 });
 
