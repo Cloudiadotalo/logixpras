@@ -1347,9 +1347,10 @@ export class AdminPanel {
     async massUpdateStages(leadIds, direction) {
         const action = direction > 0 ? 'avançar' : 'retroceder';
         
-            const selectedArray = Array.from(this.selectedLeads);
-            if (selectedArray.length === 0) {
-            }
+        const selectedArray = Array.from(this.selectedLeads);
+        if (selectedArray.length === 0) {
+            return;
+        }
 
         try {
             console.log(`📊 Atualizando etapas em massa no Supabase (${action})...`);
@@ -1425,13 +1426,12 @@ export class AdminPanel {
             if (validLeads.length !== selectedLeads.length) {
                 console.warn(`⚠️ ${selectedLeads.length - validLeads.length} leads inválidos foram ignorados`);
             }
-                    cpf: lead.cpf,
-                    etapa_atual: targetStage
-                }));
+            
+            const updates = filteredValidLeads.map(lead => ({
+                cpf: lead.cpf,
+                etapa_atual: targetStage
+            }));
 
-                // Atualizar etapa de todos os leads selecionados
-                const leadsToUpdate = filteredValidLeads.map(lead => ({
-                    ...lead,
             // Atualizar etapa de todos os leads selecionados
             const leadsToUpdate = filteredValidLeads.map(lead => ({
                 ...lead,
