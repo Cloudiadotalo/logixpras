@@ -1386,6 +1386,28 @@ export class AdminPanel {
         }
     }
 
+    getSelectedLeads() {
+        // Retornar array de leads completos baseado nos IDs selecionados
+        return this.leads.filter(lead => this.selectedLeads.includes(lead.id));
+    }
+    
+    clearSelection() {
+        this.selectedLeads = [];
+        this.updateSelectedCount();
+        
+        // Desmarcar todos os checkboxes
+        const checkboxes = document.querySelectorAll('input[type="checkbox"][data-lead-id]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Desmarcar checkbox "selecionar todos"
+        const selectAllCheckbox = document.querySelector('input[type="checkbox"][onchange*="toggleSelectAll"]');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+        }
+    }
+
     async massSetStage(leadIds) {
         try {
             const selectedLeads = this.getSelectedLeads();
@@ -1908,10 +1930,6 @@ export class AdminPanel {
             option.textContent = `Etapa ${i}`;
             stageFilter.appendChild(option);
         }
-    }
-
-    getSelectedLeads() {
-        return this.leads.filter(lead => this.selectedLeads.some(l => l.id === lead.id));
     }
 }
 
