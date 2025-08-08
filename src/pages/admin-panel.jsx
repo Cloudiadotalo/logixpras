@@ -64,7 +64,7 @@ export class AdminPanel {
                     const cleanValue = value.replace(/[^\d]/g, '');
                     if (cleanValue.length <= 11) {
                         e.target.value = this.applyCPFMask(cleanValue);
-                    checkbox.checked = this.selectedLeads.has(lead);
+                    }
                 }
             });
         }
@@ -474,41 +474,49 @@ export class AdminPanel {
     }
 
     async handleRegressAll() {
-        if (this.filteredLeads.length === 0) {
-            this.showNotification('Nenhum lead para retroceder', 'error');
-            return;
-            if (!Array.isArray(this.leads)) {
-                throw new Error('Lista de leads não está disponível');
+        try {
+            console.log('⏪ Retrocedendo todos os leads uma etapa');
+            
+            if (this.leads.length === 0) {
+                alert('Nenhum lead encontrado');
+                return;
             }
             
-        }
-
-        if (!confirm(`Tem certeza que deseja RETROCEDER todos os ${this.filteredLeads.length} leads exibidos para a etapa anterior?`)) return;
-
-        try {
-            console.log(`📉 Retrocedendo todos os ${this.filteredLeads.length} leads...`);
+            const confirmation = confirm(`Tem certeza que deseja retroceder TODOS os ${this.leads.length} leads uma etapa?`);
+            if (!confirmation) return;
             
-            let updatedCount = 0;
+            let successCount = 0;
+            let errorCount = 0;
             
-            for (const lead of this.filteredLeads) {
+            for (const lead of this.leads) {
+                if (!lead || !lead.cpf) {
+                    console.warn('⚠️ Lead sem CPF válido, pulando:', lead);
+                    errorCount++;
+                    continue;
+                }
+                
                 const currentStage = lead.etapa_atual || 1;
                 const newStage = Math.max(1, currentStage - 1);
                 
-                const result = await this.dbService.updateLead(lead.id, {
-                    etapa_atual: newStage
-                });
+                const regressResult = await this.dbService.updateLeadStage(lead.cpf, newStage);
                 
-                if (result.success) {
-                    updatedCount++;
+                if (regressResult.success) {
+                    lead.etapa_atual = newStage;
+                    successCount++;
+                } else {
+                    errorCount++;
+                    console.error('❌ Erro ao retroceder lead:', lead.cpf, regressResult.error);
                 }
             }
             
+            console.log(`✅ Regressão concluída: ${successCount} sucessos, ${errorCount} erros`);
+            alert(`Regressão concluída!\nSucessos: ${successCount}\nErros: ${errorCount}`);
+            
             await this.loadLeadsFromSupabase();
-            this.showNotification(`${updatedCount} leads retrocedidos com sucesso!`, 'success');
             
         } catch (error) {
             console.error('❌ Erro ao retroceder todos os leads:', error);
-            this.showNotification('Erro ao retroceder leads: ' + error.message, 'error');
+            alert(`Erro: ${error.message}`);
         }
     }
 
@@ -713,22 +721,12 @@ export class AdminPanel {
 
     async updateLeadStageInSupabase(leadId, direction) {
         try {
-            // Validar se há leads selecionados
-            if (!this.selectedLeads || this.selectedLeads.length === 0) {
-            await this.updateLeadStageInSupabase(lead.cpf, newStage);
-                return;
-            }
-            
             const lead = this.leads.find(l => l.id === leadId);
             if (!lead) {
                 this.showNotification('Lead não encontrado', 'error');
                 return;
             }
-            if (!lead.cpf) {
-                throw new Error('CPF não encontrado no lead');
-            }
             
-            const result = await this.dbService.updateLeadStage(lead.cpf, newStage);
             const currentStage = lead.etapa_atual || 1;
             const newStage = Math.max(1, Math.min(26, currentStage + direction));
             
@@ -743,8 +741,8 @@ export class AdminPanel {
                 const action = direction > 0 ? 'avançada' : 'retrocedida';
                 this.showNotification(`Etapa ${action} com sucesso! Nova etapa: ${newStage}`, 'success');
             } else {
-                console.error('❌ Erro ao atualizar etapa:', result.error);
-                this.showNotification('Erro ao atualizar etapa: ' + result.error, 'error');
+                console.error('❌ Erro ao atualizar etapa:', updateResult.error);
+                this.showNotification('Erro ao atualizar etapa: ' + updateResult.error, 'error');
             }
             
         } catch (error) {
@@ -1365,69 +1363,37 @@ export class AdminPanel {
     }
 
     async massSetStage(leadIds) {
-        try {
-            const selectedLeads = this.getSelectedLeads();
-            
-            // Validar se há leads selecionados
-            if (!selectedLeads || selectedLeads.length === 0) {
-                throw new Error('Nenhum lead selecionado');
-            }
-            
-            if (this.selectedLeads.size === 0) {
-            
-            if (!targetStage || targetStage < 1 || targetStage > 25) {
-                throw new Error('Etapa inválida');
-            }
-            console.log(`🔄 Atualizando ${this.selectedLeads.size} leads - direção: ${direction}`);
-            // Validar CPFs dos leads selecionados
-            if (this.selectedLeads.size === 0) {
-                if (!lead || !lead.cpf) {
-                    console.warn('⚠️ Lead sem CPF encontrado:', lead);
-            if (!Array.isArray(this.selectedLeads)) {
-                console.error('❌ selectedLeads não é um array:', typeof this.selectedLeads);
-                throw new Error('selectedLeads não é um array válido');
-            }
-            
-                    return false;
-                }
-                return true;
-            });
-            
-            if (validLeads.length === 0) {
-                throw new Error('Nenhum lead válido selecionado (todos sem CPF)');
-            }
-            
-            // Filtrar leads válidos (com CPF)
-            const filteredValidLeads = Array.from(this.selectedLeads).filter(lead => lead && lead.cpf);
-            
-            if (filteredValidLeads.length === 0) {
-                alert('Nenhum lead válido selecionado (CPF ausente)');
-                return;
-            }
-            
-            if (validLeads.length !== selectedLeads.length) {
-                console.warn(`⚠️ ${selectedLeads.length - validLeads.length} leads inválidos foram ignorados`);
-            }
-            for (const lead of validLeads) {
-            }
-            
-            // Atualizar etapa de todos os leads selecionados
-            const leadsToUpdate = filteredValidLeads.map(lead => ({
-                ...lead,
-                etapa_atual: targetStage
-            }));
-            
-            const result = await this.dbService.bulkUpdateLeads(leadsToUpdate);
+        const targetStage = prompt('Digite a etapa desejada (1-26):');
+        
+        if (!targetStage || isNaN(targetStage) || targetStage < 1 || targetStage > 26) {
+            this.showNotification('Etapa inválida', 'error');
+            return;
+        }
 
-            if (result.success) {
-                alert(`✅ ${result.successCount} de ${filteredValidLeads.length} leads atualizados para etapa ${targetStage}`);
-                await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
-                this.selectedLeads.clear();
-                console.log(`✅ ${result.data.length} leads atualizados no Supabase`);
-            } else {
-                console.error('❌ Erro ao definir etapa:', result.error);
-                this.showNotification('Erro ao definir etapa: ' + result.error, 'error');
+        const stageNumber = parseInt(targetStage);
+        
+        if (!confirm(`Tem certeza que deseja definir ${leadIds.length} lead(s) para a etapa ${stageNumber}?`)) return;
+
+        try {
+            console.log(`📊 Definindo etapa ${stageNumber} para ${leadIds.length} leads...`);
+            
+            let updatedCount = 0;
+            
+            for (const leadId of leadIds) {
+                const result = await this.dbService.updateLead(leadId, {
+                    etapa_atual: stageNumber
+                });
+                
+                if (result.success) {
+                    updatedCount++;
+                }
             }
+            
+            this.selectedLeads.clear();
+            await this.loadLeadsFromSupabase(); // Recarregar da fonte oficial
+            
+            this.showNotification(`${updatedCount} lead(s) definidos para etapa ${stageNumber}!`, 'success');
+            console.log(`✅ ${updatedCount} leads atualizados no Supabase`);
             
         } catch (error) {
             console.error('❌ Erro ao definir etapa:', error);
@@ -1459,11 +1425,14 @@ export class AdminPanel {
         } catch (error) {
             console.error('❌ Erro ao excluir leads:', error);
             this.showNotification('Erro ao excluir leads: ' + error.message, 'error');
-            if (!this.selectedLeads.has(lead)) {
-                this.selectedLeads.add(lead);
-            this.selectedLeads = new Set(this.leads);
+        }
+    }
+
     toggleLeadSelection(leadId, isSelected) {
-            this.selectedLeads.clear();
+        if (isSelected) {
+            this.selectedLeads.add(leadId);
+        } else {
+            this.selectedLeads.delete(leadId);
         }
         this.updateSelectedCount();
     }
@@ -1486,7 +1455,7 @@ export class AdminPanel {
         const count = this.selectedLeads.size;
         const massActionButtons = document.querySelectorAll('.mass-action-button');
         const actionCounts = document.querySelectorAll('.action-count');
-        const count = this.selectedLeads.size;
+        const selectedCount = document.getElementById('selectedCount');
 
         if (selectedCount) {
             selectedCount.textContent = `${count} selecionados`;
@@ -1600,8 +1569,8 @@ export class AdminPanel {
             const result = await this.dbService.getAllLeads();
             
             if (result.success) {
-                console.log(`✅ ${validLeads.length} leads atualizados para etapa ${stageNumber}`);
-                this.filteredLeads = [...this.allLeads];
+                this.leads = result.data || [];
+                this.filteredLeads = [...this.leads];
                 
                 // Atualizar interface
                 this.renderLeadsTable();
@@ -1611,13 +1580,13 @@ export class AdminPanel {
                 this.updateSupabaseStatus('Conectado e sincronizado', 'connected');
                 console.log('✅ Sincronização com Supabase concluída');
                 
-                return { success: true, count: this.allLeads.length };
+                return { success: true, count: this.leads.length };
             } else {
                 throw new Error(result.error);
             }
         } catch (error) {
             console.error('❌ Erro na sincronização:', error);
-            alert(`Erro ao definir etapa: ${error.message || 'Erro desconhecido'}`);
+            this.updateSupabaseStatus('Erro na sincronização', 'error');
             return { success: false, error: error.message };
         }
     }
@@ -1625,10 +1594,10 @@ export class AdminPanel {
     // Método para atualizar estatísticas
     updateStats(leads) {
         // Update statistics counters
-        const leadsCount = this.allLeads.length;
+        const leadsCount = this.leads.length;
         const selectedCount = this.selectedLeads.size;
-        const paidCount = this.allLeads.filter(lead => lead.status_pagamento === 'pago').length;
-        const pendingCount = this.allLeads.filter(lead => lead.status_pagamento === 'pendente').length;
+        const paidCount = this.leads.filter(lead => lead.status_pagamento === 'pago').length;
+        const pendingCount = this.leads.filter(lead => lead.status_pagamento === 'pendente').length;
 
         this.updateElement('leadsCount', leadsCount);
         this.updateElement('selectedCount', `${selectedCount} selecionados`);
@@ -1654,22 +1623,16 @@ export class AdminPanel {
         console.log('🔄 Recarregando sistema da transportadora...');
         this.showNotification('Recarregando sistema da transportadora...', 'info');
         
-            this.selectedLeads.clear();
+        try {
             // Testar conexão com Supabase
-            await this.loadLeadsFromSupabase();
-            
-            if (!cpf) {
-                throw new Error('CPF é obrigatório para atualizar etapa');
-            }
-            
             const connectionTest = await this.dbService.testConnection();
             if (connectionTest.success) {
                 console.log('✅ Conexão com Supabase OK');
                 
                 // Recarregar dados
-                await this.loadLeads();
+                await this.loadLeadsFromSupabase();
                 this.showNotification('Sistema da transportadora recarregado com sucesso!', 'success');
-                throw new Error(`Falha na atualização: ${result.errorCount} erros de ${filteredValidLeads.length} leads`);
+            } else {
                 console.error('❌ Falha na conexão com Supabase:', connectionTest.error);
                 this.showNotification('Erro na conexão com Supabase: ' + connectionTest.error, 'error');
             }
