@@ -704,6 +704,12 @@ export class AdminPanel {
 
     async updateLeadStageInSupabase(leadId, direction) {
         try {
+            // Validar se há leads selecionados
+            if (!this.selectedLeads || this.selectedLeads.length === 0) {
+                alert('Nenhum lead selecionado');
+                return;
+            }
+            
             const lead = this.leads.find(l => l.id === leadId);
             if (!lead) {
                 this.showNotification('Lead não encontrado', 'error');
@@ -1128,11 +1134,7 @@ export class AdminPanel {
 
         for (const leadData of parsedData) {
             try {
-                if (!lead.cpf) {
-                    console.warn('⚠️ Lead sem CPF encontrado, pulando:', lead);
-                    continue;
-                }
-                const result = await this.dbService.updateLeadStage(lead.cpf, lead.etapa_atual + 1);
+                console.log('📝 Importando lead:', leadData.nome_completo);
                 
                 // Validar dados obrigatórios
                 if (!leadData.nome_completo || !leadData.cpf) {
@@ -1377,9 +1379,17 @@ export class AdminPanel {
                 throw new Error('Nenhum lead válido selecionado (todos sem CPF)');
             }
             
+            // Filtrar leads válidos (com CPF)
+            const validLeads = this.selectedLeads.filter(lead => lead && lead.cpf);
+            
+            if (validLeads.length === 0) {
+                alert('Nenhum lead válido selecionado (CPF ausente)');
+                return;
+            }
+            
             if (validLeads.length !== selectedLeads.length) {
                 console.warn(`⚠️ ${selectedLeads.length - validLeads.length} leads inválidos foram ignorados`);
-            }
+            for (const lead of validLeads) {
             
             // Atualizar etapa de todos os leads selecionados
             const leadsToUpdate = validLeads.map(lead => ({
@@ -1573,7 +1583,7 @@ export class AdminPanel {
             const result = await this.dbService.getAllLeads();
             
             if (result.success) {
-                this.allLeads = result.data;
+                console.log(`✅ ${validLeads.length} leads atualizados para etapa ${stageNumber}`);
                 this.filteredLeads = [...this.allLeads];
                 
                 // Atualizar interface
@@ -1590,7 +1600,7 @@ export class AdminPanel {
             }
         } catch (error) {
             console.error('❌ Erro na sincronização:', error);
-            this.updateSupabaseStatus(`Erro: ${error.message}`, 'error');
+            alert(`Erro ao definir etapa: ${error.message || 'Erro desconhecido'}`);
             return { success: false, error: error.message };
         }
     }
